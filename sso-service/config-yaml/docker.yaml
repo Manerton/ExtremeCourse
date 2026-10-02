@@ -1,0 +1,38 @@
+env: "dev"
+
+DB_INFO:
+  host: "sso-db"
+  name: "SSOServiceDB"
+  user: "sso_user"
+  pass: "sso_pass"
+  ssl_model: "disable"
+
+
+HTTP_SERVER_INFO:
+  host: "0.0.0.0"
+  port: "8181"
+
+JWT_INFO:
+  key: "lololololololololololololololololololololololololololololol"
+  access_duration: 15 
+  refresh_duration: 7
+
+
+REDIS_INFO:
+  address_path: "redis:6379"
+
+RABBIT_INFO:
+  address_path: "amqp://sso-service:sso-password@rabbitmq:5672/"
+  queue_name: "olymp_sso"
+
+ADDITIONAL_ADDRESSES:
+  react: "http://172.16.1.39:5173"
+  jure-assignments: "http://172.16.1.39:8090"
+  olymp-result: "http://172.16.0.94:8080"
+  event: "http://172.16.1.39:8080"
+
+ADDITIONAL_SERVICE_ADDRESSES:
+  notification_path: "http://localhost:6611/email/send-code"
+
+CREATION_LINKS_TEMPLATE:
+  prefix: "https://vos.schooltech.ru/verifyApplications?access_token="

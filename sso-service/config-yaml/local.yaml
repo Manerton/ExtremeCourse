@@ -1,0 +1,24 @@
+env: "local"
+
+DB_INFO:
+  host: "localhost"
+  name: "SSOServiceDB"
+  user: "postgres"
+  pass: "root"
+  ssl_model: "disable"
+
+
+HTTP_SERVER_INFO:
+  host: "localhost"
+  port: "8181"
+
+JWT_INFO:
+  key: "lololololololololololololololololololololololololololololol"
+  access_duration: 15
+  refresh_duration: 7
+
+ADDITIONAL_ADDRESSES:
+  react: "http://localhost:5173"
+  jure-assignments: "http://localhost:8090"
+  olymp-result: "http://localhost:8080"
+  event: "http://localhost:8080"

@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "strict": true,
+    "moduleResolution": "bundler",
+    "types": ["@types/react", "@types/react-dom", "@types/react-bootstrap", "@types/react-datepicker"],
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  }
+}
