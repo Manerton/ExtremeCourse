@@ -28,6 +28,14 @@ func ErrorApiResponse(err *errs.ApiError) ApiResponse {
 	}
 }
 
+func ErrorResponse(msg string) ApiResponse {
+	return ApiResponse{
+		Status:     ERROR,
+		StatusCode: 400,
+		Message:    msg,
+	}
+}
+
 func SuccessResponse(msg string) ApiResponse {
 	return ApiResponse{
 		Status:     SUCCESS,
