@@ -1,4 +1,4 @@
-basePath: /backend
+basePath: /
 definitions:
   login_dto.LoginRequestDTO:
     properties:
@@ -59,6 +59,11 @@ definitions:
       password:
         type: string
     type: object
+  register_dto.CheckCredentialDTO:
+    properties:
+      credential:
+        type: string
+    type: object
   register_dto.RegisterParticipantRequestDTO:
     properties:
       birthdate:
@@ -105,6 +110,18 @@ definitions:
       role:
         type: string
       surname:
+        type: string
+    type: object
+  register_dto.SendPhoneCodeDTO:
+    properties:
+      phone:
+        type: string
+    type: object
+  register_dto.VerifyCodeDTO:
+    properties:
+      code:
+        type: string
+      phone_number:
         type: string
     type: object
   request.IdsRequest:
@@ -266,9 +283,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Регистрация пользователя для админа
+      description: Регистрация пользователя администратором
       parameters:
-      - description: Данные для регистрации от панели админа
+      - description: Данные для регистрации от панели администратора
         in: body
         name: credentials
         required: true
@@ -285,13 +302,18 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: AdminRegister
       tags:
       - auth
   /api/participants:
     get:
-      description: Получение всех учеников
+      description: Получение всех участников с пагинацией
       parameters:
       - description: Номер страницы
         in: query
@@ -319,15 +341,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get all participants
       tags:
       - participants
   /api/participants/{id}:
     get:
-      description: Получение данных о ученике по id
+      description: Получение данных об участнике по ID
       parameters:
-      - description: id ученика
+      - description: ID участника
         in: path
         name: id
         required: true
@@ -338,31 +365,41 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.ApiResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/participant_dto.ParticipantResponseDTO'
+              type: object
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get participant by id
       tags:
       - participants
     put:
       consumes:
       - application/json
-      description: Обновление данных об ученике
+      description: Обновление данных об участнике
       parameters:
+      - description: ID участника
+        in: path
+        name: id
+        required: true
+        type: string
       - description: Новые данные для обновления
         in: body
         name: credentials
         required: true
         schema:
           $ref: '#/definitions/participant_dto.UpdateParticipantRequestDTO'
-      - description: id пользователя
-        in: path
-        name: id
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -374,15 +411,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Update participant
       tags:
       - participants
   /api/participants/byuser/{id}:
     get:
-      description: Получение данных о ученике по user id
+      description: Получение данных об участнике по ID связанного пользователя
       parameters:
-      - description: id пользователя
+      - description: ID пользователя
         in: path
         name: id
         required: true
@@ -393,13 +435,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.ApiResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/participant_dto.ParticipantResponseDTO'
+              type: object
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get participant by user id
       tags:
       - participants
   /api/participants/count:
@@ -415,19 +467,25 @@ paths:
             - $ref: '#/definitions/response.ApiResponse'
             - properties:
                 data:
+                  format: int64
                   type: integer
               type: object
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get participants count
       tags:
       - participants
   /api/schools:
     get:
-      description: Получение всех школ
+      description: Получение всех школ с пагинацией
       parameters:
       - description: Номер страницы
         in: query
@@ -455,8 +513,13 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: All schools
       tags:
       - schools
     post:
@@ -481,15 +544,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Create school
       tags:
       - schools
   /api/schools/{id}:
     get:
-      description: Получение школы по id
+      description: Получение школы по ID
       parameters:
-      - description: id школы
+      - description: ID школы
         in: path
         name: id
         required: true
@@ -510,26 +578,31 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get school by id
       tags:
       - schools
     put:
       consumes:
       - application/json
-      description: Обновление школы
+      description: Обновление данных школы
       parameters:
+      - description: ID школы
+        in: path
+        name: id
+        required: true
+        type: string
       - description: Данные для обновления школы
         in: body
         name: credentials
         required: true
         schema:
           $ref: '#/definitions/school_dto.UpdateSchoolRequestDTO'
-      - description: id пользователя
-        in: path
-        name: id
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -541,8 +614,13 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Update school
       tags:
       - schools
   /api/schools/count:
@@ -558,14 +636,56 @@ paths:
             - $ref: '#/definitions/response.ApiResponse'
             - properties:
                 data:
+                  format: int64
                   type: integer
               type: object
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: School count
+      tags:
+      - schools
+  /api/schools/district/{id}:
+    get:
+      description: Получение всех школ по ID района
+      parameters:
+      - description: ID района
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/school_dto.SchoolResponseDTO'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all schools by district
       tags:
       - schools
   /api/users:
@@ -598,15 +718,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: All users
       tags:
       - users
   /api/users/{id}:
     delete:
       description: Удаление пользователя
       parameters:
-      - description: id пользователя
+      - description: ID пользователя
         in: path
         name: id
         required: true
@@ -622,14 +747,19 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Delete user
       tags:
       - users
     get:
       description: Получение пользователя по id
       parameters:
-      - description: id пользователя
+      - description: ID пользователя
         in: path
         name: id
         required: true
@@ -650,8 +780,13 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get user by id
       tags:
       - users
     put:
@@ -659,17 +794,17 @@ paths:
       - application/json
       description: Обновление пользователя
       parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: string
       - description: Данные для обновления пользователя
         in: body
         name: credentials
         required: true
         schema:
           $ref: '#/definitions/user_dto.UpdateUserRequestDTO'
-      - description: id пользователя
-        in: path
-        name: id
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -681,15 +816,50 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+  /api/users/all-info:
+    get:
+      description: Получение всей информации обо всех пользователях-учениках
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/user_dto.UserParticipantResponseDTO'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all user participants info
       tags:
       - users
   /api/users/all-info/{id}:
     get:
-      description: Получение всей информации о пользователе ученике
+      description: Получение всей информации о пользователе-ученике по ID
       parameters:
-      - description: id пользователя
+      - description: ID пользователя
         in: path
         name: id
         required: true
@@ -710,15 +880,24 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get full user participant info
       tags:
       - users
   /api/users/by-role:
-    post:
-      consumes:
-      - application/json
+    get:
       description: Получение всех пользователей по роли
+      parameters:
+      - description: Роль пользователя
+        in: query
+        name: role
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -729,14 +908,21 @@ paths:
             - $ref: '#/definitions/response.ApiResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/user_dto.UserResponseDTO'
+                  items:
+                    $ref: '#/definitions/user_dto.UserResponseDTO'
+                  type: array
               type: object
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get users by role
       tags:
       - users
   /api/users/change-password/{id}:
@@ -745,17 +931,17 @@ paths:
       - application/json
       description: Изменение пароля пользователя
       parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: string
       - description: Данные для изменения пароля
         in: body
         name: credentials
         required: true
         schema:
           $ref: '#/definitions/recover_dto.ChangePasswordDTORequest'
-      - description: id пользователя
-        in: path
-        name: id
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -767,10 +953,85 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Change password
       tags:
       - users
+  /api/users/check-email:
+    post:
+      consumes:
+      - application/json
+      description: Проверка занятости email адреса
+      parameters:
+      - description: Email для проверки
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/register_dto.CheckCredentialDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      summary: Check email existence
+      tags:
+      - auth
+  /api/users/check-phone:
+    post:
+      consumes:
+      - application/json
+      description: Проверка занятости номера телефона
+      parameters:
+      - description: Телефон для проверки
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/register_dto.CheckCredentialDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      summary: Check phone existence
+      tags:
+      - auth
   /api/users/count:
     get:
       description: Получение количества пользователей
@@ -784,14 +1045,20 @@ paths:
             - $ref: '#/definitions/response.ApiResponse'
             - properties:
                 data:
+                  format: int64
                   type: integer
               type: object
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Users count
       tags:
       - users
   /api/users/filter:
@@ -822,17 +1089,22 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get user by filter
       tags:
       - users
   /api/users/forgot-password:
     post:
       consumes:
       - application/json
-      description: Восстановление забытого пароля
+      description: Запрос на восстановление забытого пароля
       parameters:
-      - description: Данные для востоновления забытого пароля
+      - description: Данные для восстановления забытого пароля
         in: body
         name: credentials
         required: true
@@ -849,8 +1121,11 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
-      security:
-      - BearerAuth: []
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      summary: Password recovery
       tags:
       - auth
   /api/users/list:
@@ -883,15 +1158,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Get users by list id
       tags:
       - users
   /api/users/login:
     post:
       consumes:
       - application/json
-      description: Авторизация пользователя
+      description: Авторизация пользователя по логину и паролю
       parameters:
       - description: Данные для входа
         in: body
@@ -905,9 +1185,22 @@ paths:
         "200":
           description: OK
           schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/login_dto.LoginResponseDTO'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
             $ref: '#/definitions/response.ApiResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ApiResponse'
       summary: Login
@@ -915,7 +1208,7 @@ paths:
       - auth
   /api/users/logout:
     post:
-      description: Выход из учётной записи
+      description: Выход из учётной записи (инвалидация refresh токена из cookies)
       produces:
       - application/json
       responses:
@@ -927,8 +1220,52 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      summary: Logout
       tags:
       - auth
+  /api/users/participants-by-list:
+    post:
+      consumes:
+      - application/json
+      description: Получение информации об участниках по списку ID
+      parameters:
+      - description: Список ID пользователей
+        in: body
+        name: ids
+        required: true
+        schema:
+          $ref: '#/definitions/request.IdsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/user_dto.UserParticipantResponseDTO'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user participants by list id
+      tags:
+      - users
   /api/users/refresh:
     post:
       consumes:
@@ -950,6 +1287,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       summary: Refresh
       tags:
       - auth
@@ -957,7 +1298,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Регистрация пользователя как ученика
+      description: Регистрация нового пользователя в качестве участника/ученика
       parameters:
       - description: Данные для регистрации
         in: body
@@ -976,13 +1317,18 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      summary: Register
       tags:
       - auth
   /api/users/revoke-all/{id}:
     post:
-      description: Блокировка всех refresh токенов пользователя
+      description: Блокировка всех refresh токенов пользователя по его ID
       parameters:
-      - description: id пользователя
+      - description: ID пользователя
         in: path
         name: id
         required: true
@@ -998,15 +1344,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Revoke all tokens by user
       tags:
       - auth
   /api/users/revoke/{id}:
     post:
-      description: Блокировка refresh токена
+      description: Блокировка конкретного refresh токена по его ID
       parameters:
-      - description: id refresh токена
+      - description: ID refresh токена
         in: path
         name: id
         required: true
@@ -1022,8 +1373,78 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
+      summary: Revoke token
+      tags:
+      - auth
+  /api/users/send-call-code:
+    post:
+      consumes:
+      - application/json
+      description: Инициализация звонка с проверочным кодом через Zvonok
+      parameters:
+      - description: Номер телефона
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/register_dto.SendPhoneCodeDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      summary: Send call code
+      tags:
+      - auth
+  /api/users/verify-code:
+    post:
+      consumes:
+      - application/json
+      description: Проверка доверенного кода подтверждения
+      parameters:
+      - description: Код подтверждения
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/register_dto.VerifyCodeDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      summary: Verify trust code
       tags:
       - auth
 securityDefinitions:

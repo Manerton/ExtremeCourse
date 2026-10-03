@@ -19,6 +19,13 @@ type Config struct {
 	RabbitConfig               `yaml:"RABBIT_INFO"`
 	CreationLinkConfig         `yaml:"CREATION_LINKS_TEMPLATE"`
 	MigrationConfig            `yaml:"MIGRATION_INFO"`
+	ZvonokConfig               `yaml:"ZVONOK_INFO"`
+}
+
+type ZvonokConfig struct {
+	CampaignID string `yaml:"campaign_id"`
+	PublicKey  string `yaml:"public_key"`
+	BaseURL    string `yaml:"base_url"`
 }
 
 type DatabaseConfig struct {

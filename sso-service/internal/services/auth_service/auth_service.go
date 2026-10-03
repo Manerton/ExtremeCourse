@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	zvonok_client "main/internal/clients/zvonok"
 	login_dto "main/internal/dto/auth/login"
 	recover_dto "main/internal/dto/auth/recover"
 	register_dto "main/internal/dto/auth/register"
 	"main/internal/lib/crypt"
 	"main/internal/lib/errs"
-	"main/internal/lib/helpers/notification_client"
 	"main/internal/lib/jwttoken"
 	"main/internal/lib/liblogger"
 	paricipant_mapper "main/internal/lib/mapper/participant_mapper"
 	"main/internal/lib/mapper/user_mapper"
+	"main/internal/lib/verification"
 	"main/internal/models/participant"
 	"main/internal/models/refresh_token"
 	"main/internal/models/user"
@@ -53,12 +54,12 @@ type AuthService struct {
 	participantRepository ParticipantRepository
 	refreshRepository     RefreshRepository
 
-	notifyClient notification_client.NotificationClient
+	zvonokClient *zvonok_client.ZvonokClient
 }
 
 func New(log *slog.Logger, orm orm.ORM, jwtManager *jwttoken.JWTManager,
 	userRepository UserRepository, participantRepository ParticipantRepository, refreshRepository RefreshRepository,
-	notifyClien notification_client.NotificationClient) *AuthService {
+	zvonokClient *zvonok_client.ZvonokClient) *AuthService {
 
 	alog := log.With("owner", "AuthService")
 
@@ -69,7 +70,7 @@ func New(log *slog.Logger, orm orm.ORM, jwtManager *jwttoken.JWTManager,
 		userRepository:        userRepository,
 		participantRepository: participantRepository,
 		refreshRepository:     refreshRepository,
-		notifyClient:          notifyClien,
+		zvonokClient:          zvonokClient,
 	}
 }
 
@@ -352,12 +353,6 @@ func (s *AuthService) RegisterParticipant(ctx context.Context, registerRequst *r
 
 	transaction.TransactionCommit()
 
-	// err = s.notifyClient.SendNotifyAcceptAccount(userModel.Email)
-	// if err != nil {
-	// 	log.Error("failed send notify on email: %w", liblogger.Err(err))
-	// 	return errs.ErrInternalError.Wrap("failed to send notify on email")
-	// }
-
 	return nil
 }
 
@@ -442,6 +437,41 @@ func (s *AuthService) ActivateAccount(ctx context.Context, email string, userCod
 		return errs.ErrInternalError.Wrap("failed update user activate status")
 	}
 
+	return nil
+}
+
+func (s *AuthService) SendPhoneCallCode(ctx context.Context, phone string) error {
+	const op = "services.AuthService.SendPhoneCallCode"
+	log := s.log.With(slog.String("op", op), slog.String("phone", phone))
+
+	// 1. Проверяем, свободен ли номер
+	available, err := s.CheckPhone(ctx, phone)
+	if err != nil {
+		return err
+	}
+	if !available {
+		log.Warn("phone already in use")
+		return errs.ErrUserAlreadyExists.Wrap("phone already registered")
+	}
+
+	// 2. Генерируем 4-значный пин-код
+	code := verification.GenerateCode()
+
+	// 3. Сохраняем в Redis с TTL (например, 5 минут)
+	// err = redisdb.SetActivationCode(phone, code, 5*time.Minute)
+	// if err != nil {
+	// 	log.Error("failed to save code in redis", liblogger.Err(err))
+	// 	return errs.ErrInternalError.Wrap("failed to save verification code")
+	// }
+
+	// 4. Отправляем запрос в сервис Zvonok
+	err = s.zvonokClient.SendCallCode(ctx, phone, code)
+	if err != nil {
+		log.Error("failed to initiate phone call", liblogger.Err(err))
+		return errs.ErrInternalError.Wrap("failed to trigger phone call")
+	}
+
+	log.Info("call code sent successfully")
 	return nil
 }
 

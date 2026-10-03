@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	zvonok_client "main/internal/clients/zvonok"
 	"main/internal/config"
 	"main/internal/handlers/auth_handler"
 	"main/internal/handlers/district_handler"
@@ -12,7 +13,6 @@ import (
 	"main/internal/handlers/participant_handler"
 	"main/internal/handlers/school_handler"
 	"main/internal/handlers/user_handler"
-	"main/internal/lib/helpers/notification_client"
 	"main/internal/lib/jwttoken"
 	"main/internal/lib/liblogger"
 	"main/internal/middleware/base_access"
@@ -83,10 +83,10 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	districtRepository := &district_repository.DistrictRepository{}
 
 	// init notify client
-	notifyClient := notification_client.New(cfg.NotificationService)
+	zvonokClient := zvonok_client.NewZvonokClient(cfg.ZvonokConfig)
 
 	// init services
-	authService := auth_service.New(log, gormORM, jwtManager, userRepository, participantRepository, refreshRepository, notifyClient)
+	authService := auth_service.New(log, gormORM, jwtManager, userRepository, participantRepository, refreshRepository, zvonokClient)
 	userService := user_service.New(log, gormORM, userRepository, participantRepository)
 	schoolService := school_service.New(log, gormORM, schoolRepository)
 	participantService := participant_service.New(log, gormORM, participantRepository)
@@ -139,21 +139,27 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
 
+	// Public routes
 	router.Post("/api/byadmin/register", authHandler.AdminRegister)
 	router.Post("/api/users/login", authHandler.Login)
 	router.Post("/api/users/logout", authHandler.Logout)
 	router.Post("/api/users/forgot-password", authHandler.RecoveryPassword)
 	router.Post("/api/users/register", authHandler.Register)
+	router.Post("/api/users/send-call-code", authHandler.SendCallCode)
 	router.Post("/api/users/refresh", authHandler.Refresh)
 
-	router.Post("/api/users/verify", authHandler.VerifyTrustCode)
+	// Сверено со Swagger: @Router /api/users/verify-code [post]
+	router.Post("/api/users/verify-code", authHandler.VerifyTrustCode)
 
-	router.Post("/api/auth/check-phone", authHandler.CheckPhone)
-	router.Post("/api/auth/check-email", authHandler.CheckEmail)
+	// Сверено со Swagger: @Router /api/users/check-phone и check-email [post]
+	router.Post("/api/users/check-phone", authHandler.CheckPhone)
+	router.Post("/api/users/check-email", authHandler.CheckEmail)
 
 	router.Get("/api/districts/{region}", districtHandler.GetAllByRegion)
 	router.Get("/api/schools/district/{id}", schoolHandler.GetAllByDistrict)
-	router.Get("/api/schools/all", schoolHandler.GetAll)
+
+	// Сверено со Swagger: @Router /api/schools [get]
+	router.Get("/api/schools", schoolHandler.GetAll)
 
 	router.With(base_access.BaseAccess(jwtManager)).Group(func(r chi.Router) {
 		// link GET
@@ -172,27 +178,33 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Post("/api/users/list", userHandler.GetUsersByListId)
 		r.Get("/api/users/{id}", userHandler.GetUserById)
 		r.Get("/api/users/all-info/{id}", userHandler.GetUserParticipantById)
-		r.Get("/api/users/participants/all-info", userHandler.GetAllUserParticipantInfo)
-		r.Post("/api/users/all-info-list", userHandler.GetUserParticipantByListId)
+
+		// Сверено со Swagger: @Router /api/users/all-info [get]
+		r.Get("/api/users/all-info", userHandler.GetAllUserParticipantInfo)
+
+		// Сверено со Swagger: @Router /api/users/participants-by-list [post]
+		r.Post("/api/users/participants-by-list", userHandler.GetUserParticipantByListId)
 
 		r.Get("/api/users/by-role", userHandler.GetUsersByRole)
 
-		// schools GET
+		// schools GET & POST
 		r.Get("/api/schools/count", schoolHandler.GetCount)
 		r.Get("/api/schools/{id}", schoolHandler.GetById)
 
-		// schools POST
-		r.Post("/api/schools/create", schoolHandler.Create)
+		// Сверено со Swagger: @Router /api/schools [post]
+		r.Post("/api/schools", schoolHandler.Create)
 
 		// users POST
 		r.Post("/api/users/change-password/{id}", userHandler.ChangePassword)
 		r.Post("/api/users/revoke/{id}", authHandler.RevokeToken)
 		r.Post("/api/users/revoke-all/{id}", authHandler.RevokeAllUserTokens)
 
+		// PUT
 		r.Put("/api/users/{id}", userHandler.Update)
 		r.Put("/api/participants/{id}", participantHandler.Update)
 		r.Put("/api/schools/{id}", schoolHandler.Update)
 
+		// DELETE
 		r.Delete("/api/users/{id}", userHandler.Delete)
 	})
 }
@@ -259,19 +271,6 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 	a.log.Info("http server started")
 
-	// go func() {
-	// 	grpcListener, err := net.Listen("tcp", a.grpcAddress)
-	// 	if err != nil {
-	// 		serverError <- err
-	// 		return
-	// 	}
-
-	// 	if err := a.grpcServer.Serve(grpcListener); err != nil {
-	// 		serverError <- err
-	// 	}
-	// }()
-	// a.log.Info("grpc server starting")
-
 	select {
 	case <-ctx.Done():
 		a.log.Info("shutting down server gracefully...")
@@ -292,6 +291,8 @@ func (a App) Stop() error {
 		return fmt.Errorf("server shutdown with error: %w", err)
 	}
 
-	a.grpcServer.GracefulStop()
+	if a.grpcServer != nil {
+		a.grpcServer.GracefulStop()
+	}
 	return nil
 }

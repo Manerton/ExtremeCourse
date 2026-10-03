@@ -3,6 +3,7 @@ package redisdb
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -30,4 +31,8 @@ func InitRedis(addressPath string) {
 func GetActivationCode(email string) (string, error) {
 	key := email
 	return RDB.Get(CTX, key).Result()
+}
+
+func SetActivationCode(key string, code string, expiration time.Duration) error {
+	return RDB.Set(CTX, key, code, expiration).Err()
 }

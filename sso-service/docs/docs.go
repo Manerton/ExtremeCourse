@@ -22,7 +22,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Регистрация пользователя для админа",
+                "description": "Регистрация пользователя администратором",
                 "consumes": [
                     "application/json"
                 ],
@@ -32,9 +32,10 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
+                "summary": "AdminRegister",
                 "parameters": [
                     {
-                        "description": "Данные для регистрации от панели админа",
+                        "description": "Данные для регистрации от панели администратора",
                         "name": "credentials",
                         "in": "body",
                         "required": true,
@@ -55,6 +56,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
@@ -66,13 +73,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получение всех учеников",
+                "description": "Получение всех участников с пагинацией",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "participants"
                 ],
+                "summary": "Get all participants",
                 "parameters": [
                     {
                         "type": "integer",
@@ -114,6 +122,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
@@ -125,17 +139,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получение данных о ученике по user id",
+                "description": "Получение данных об участнике по ID связанного пользователя",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "participants"
                 ],
+                "summary": "Get participant by user id",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id пользователя",
+                        "description": "ID пользователя",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -145,11 +160,29 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.ApiResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/participant_dto.ParticipantResponseDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -171,6 +204,7 @@ const docTemplate = `{
                 "tags": [
                     "participants"
                 ],
+                "summary": "Get participants count",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -183,7 +217,8 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "integer"
+                                            "type": "integer",
+                                            "format": "int64"
                                         }
                                     }
                                 }
@@ -192,6 +227,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -206,17 +247,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получение данных о ученике по id",
+                "description": "Получение данных об участнике по ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "participants"
                 ],
+                "summary": "Get participant by id",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id ученика",
+                        "description": "ID участника",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -226,11 +268,29 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.ApiResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/participant_dto.ParticipantResponseDTO"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -243,7 +303,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновление данных об ученике",
+                "description": "Обновление данных об участнике",
                 "consumes": [
                     "application/json"
                 ],
@@ -253,7 +313,15 @@ const docTemplate = `{
                 "tags": [
                     "participants"
                 ],
+                "summary": "Update participant",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID участника",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Новые данные для обновления",
                         "name": "credentials",
@@ -262,13 +330,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/participant_dto.UpdateParticipantRequestDTO"
                         }
-                    },
-                    {
-                        "type": "string",
-                        "description": "id пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -280,6 +341,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -294,13 +361,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получение всех школ",
+                "description": "Получение всех школ с пагинацией",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "schools"
                 ],
+                "summary": "All schools",
                 "parameters": [
                     {
                         "type": "integer",
@@ -342,6 +410,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             },
@@ -361,6 +435,7 @@ const docTemplate = `{
                 "tags": [
                     "schools"
                 ],
+                "summary": "Create school",
                 "parameters": [
                     {
                         "description": "Данные для создания школы",
@@ -384,6 +459,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
@@ -402,6 +483,7 @@ const docTemplate = `{
                 "tags": [
                     "schools"
                 ],
+                "summary": "School count",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -414,7 +496,8 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "integer"
+                                            "type": "integer",
+                                            "format": "int64"
                                         }
                                     }
                                 }
@@ -423,6 +506,73 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/schools/district/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение всех школ по ID района",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schools"
+                ],
+                "summary": "Get all schools by district",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID района",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/school_dto.SchoolResponseDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -437,17 +587,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получение школы по id",
+                "description": "Получение школы по ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "schools"
                 ],
+                "summary": "Get school by id",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id школы",
+                        "description": "ID школы",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -477,6 +628,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             },
@@ -486,7 +643,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновление школы",
+                "description": "Обновление данных школы",
                 "consumes": [
                     "application/json"
                 ],
@@ -496,7 +653,15 @@ const docTemplate = `{
                 "tags": [
                     "schools"
                 ],
+                "summary": "Update school",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID школы",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Данные для обновления школы",
                         "name": "credentials",
@@ -505,13 +670,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/school_dto.UpdateSchoolRequestDTO"
                         }
-                    },
-                    {
-                        "type": "string",
-                        "description": "id пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -523,6 +681,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -544,6 +708,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "All users",
                 "parameters": [
                     {
                         "type": "integer",
@@ -585,6 +750,64 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/all-info": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение всей информации обо всех пользователях-учениках",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get all user participants info",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/user_dto.UserParticipantResponseDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
@@ -596,17 +819,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получение всей информации о пользователе ученике",
+                "description": "Получение всей информации о пользователе-ученике по ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
+                "summary": "Get full user participant info",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id пользователя",
+                        "description": "ID пользователя",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -636,26 +860,39 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
         },
         "/api/users/by-role": {
-            "post": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
                 "description": "Получение всех пользователей по роли",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
+                ],
+                "summary": "Get users by role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Роль пользователя",
+                        "name": "role",
+                        "in": "query",
+                        "required": true
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -669,7 +906,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user_dto.UserResponseDTO"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/user_dto.UserResponseDTO"
+                                            }
                                         }
                                     }
                                 }
@@ -678,6 +918,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -702,7 +948,15 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "Change password",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID пользователя",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Данные для изменения пароля",
                         "name": "credentials",
@@ -711,13 +965,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/recover_dto.ChangePasswordDTORequest"
                         }
-                    },
-                    {
-                        "type": "string",
-                        "description": "id пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -729,6 +976,128 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/check-email": {
+            "post": {
+                "description": "Проверка занятости email адреса",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Check email existence",
+                "parameters": [
+                    {
+                        "description": "Email для проверки",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/register_dto.CheckCredentialDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/check-phone": {
+            "post": {
+                "description": "Проверка занятости номера телефона",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Check phone existence",
+                "parameters": [
+                    {
+                        "description": "Телефон для проверки",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/register_dto.CheckCredentialDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -750,6 +1119,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "Users count",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -762,7 +1132,8 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "integer"
+                                            "type": "integer",
+                                            "format": "int64"
                                         }
                                     }
                                 }
@@ -771,6 +1142,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -795,6 +1172,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "Get user by filter",
                 "parameters": [
                     {
                         "description": "Данные для поиска пользователя",
@@ -830,18 +1208,19 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
         },
         "/api/users/forgot-password": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Восстановление забытого пароля",
+                "description": "Запрос на восстановление забытого пароля",
                 "consumes": [
                     "application/json"
                 ],
@@ -851,9 +1230,10 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
+                "summary": "Password recovery",
                 "parameters": [
                     {
-                        "description": "Данные для востоновления забытого пароля",
+                        "description": "Данные для восстановления забытого пароля",
                         "name": "credentials",
                         "in": "body",
                         "required": true,
@@ -871,6 +1251,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -895,6 +1281,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "Get users by list id",
                 "parameters": [
                     {
                         "description": "Список id пользователей",
@@ -933,13 +1320,19 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
         },
         "/api/users/login": {
             "post": {
-                "description": "Авторизация пользователя",
+                "description": "Авторизация пользователя по логину и паролю",
                 "consumes": [
                     "application/json"
                 ],
@@ -965,11 +1358,35 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/login_dto.LoginResponseDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -979,13 +1396,14 @@ const docTemplate = `{
         },
         "/api/users/logout": {
             "post": {
-                "description": "Выход из учётной записи",
+                "description": "Выход из учётной записи (инвалидация refresh токена из cookies)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
+                "summary": "Logout",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -995,6 +1413,78 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/participants-by-list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение информации об участниках по списку ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user participants by list id",
+                "parameters": [
+                    {
+                        "description": "Список ID пользователей",
+                        "name": "ids",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.IdsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/user_dto.UserParticipantResponseDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1039,13 +1529,19 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
         },
         "/api/users/register": {
             "post": {
-                "description": "Регистрация пользователя как ученика",
+                "description": "Регистрация нового пользователя в качестве участника/ученика",
                 "consumes": [
                     "application/json"
                 ],
@@ -1055,6 +1551,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
+                "summary": "Register",
                 "parameters": [
                     {
                         "description": "Данные для регистрации",
@@ -1078,6 +1575,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             }
@@ -1089,17 +1592,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Блокировка всех refresh токенов пользователя",
+                "description": "Блокировка всех refresh токенов пользователя по его ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
+                "summary": "Revoke all tokens by user",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id пользователя",
+                        "description": "ID пользователя",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1114,6 +1618,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1128,17 +1638,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Блокировка refresh токена",
+                "description": "Блокировка конкретного refresh токена по его ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
+                "summary": "Revoke token",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id refresh токена",
+                        "description": "ID refresh токена",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1153,6 +1664,116 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/send-call-code": {
+            "post": {
+                "description": "Инициализация звонка с проверочным кодом через Zvonok",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Send call code",
+                "parameters": [
+                    {
+                        "description": "Номер телефона",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/register_dto.SendPhoneCodeDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/verify-code": {
+            "post": {
+                "description": "Проверка доверенного кода подтверждения",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify trust code",
+                "parameters": [
+                    {
+                        "description": "Код подтверждения",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/register_dto.VerifyCodeDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1174,10 +1795,11 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "Get user by id",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id пользователя",
+                        "description": "ID пользователя",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1207,6 +1829,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
                     }
                 }
             },
@@ -1226,7 +1854,15 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "Update user",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID пользователя",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Данные для обновления пользователя",
                         "name": "credentials",
@@ -1235,13 +1871,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/user_dto.UpdateUserRequestDTO"
                         }
-                    },
-                    {
-                        "type": "string",
-                        "description": "id пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -1253,6 +1882,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1272,10 +1907,11 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
+                "summary": "Delete user",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "id пользователя",
+                        "description": "ID пользователя",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1290,6 +1926,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -1390,6 +2032,14 @@ const docTemplate = `{
                 }
             }
         },
+        "register_dto.CheckCredentialDTO": {
+            "type": "object",
+            "properties": {
+                "credential": {
+                    "type": "string"
+                }
+            }
+        },
         "register_dto.RegisterParticipantRequestDTO": {
             "type": "object",
             "properties": {
@@ -1459,6 +2109,25 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "surname": {
+                    "type": "string"
+                }
+            }
+        },
+        "register_dto.SendPhoneCodeDTO": {
+            "type": "object",
+            "properties": {
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "register_dto.VerifyCodeDTO": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "phone_number": {
                     "type": "string"
                 }
             }
@@ -1704,7 +2373,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/backend",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Backend",
 	Description:      "Документация к backend части сайта",

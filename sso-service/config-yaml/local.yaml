@@ -26,6 +26,11 @@ MIGRATION_INFO:
 REDIS_INFO:
   address_path: "localhost:6379"
 
+ZVONOK_INFO: 
+  campaign_id: "1104562791"
+  public_key: "6e51df92fe070ff50cd301aa39ce38b8"
+  base_url: ""
+
 RABBIT_INFO:
   address_path: "amqp://sso-service:sso-password@localhost:5672/"
   queue_name: "olymp_sso"

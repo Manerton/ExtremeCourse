@@ -16,12 +16,14 @@ import (
 // @title Backend
 // @version 1.0
 // @description Документация к backend части сайта
-// @BasePath /backend
+// @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in   header
 // @name Authorization
 func main() {
 	cfg := config.MustConfigLoad()
+
+	// TODO add redis
 
 	log := liblogger.SetupLogger(cfg.Env)
 	log.Info("startint backend server", slog.String("env", cfg.Env))

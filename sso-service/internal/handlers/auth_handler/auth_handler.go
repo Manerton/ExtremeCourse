@@ -21,6 +21,7 @@ type AuthService interface {
 	RegisterParticipant(ctx context.Context, registerRequest *register_dto.RegisterParticipantRequestDTO) error
 	RegisterUser(ctx context.Context, userRequest *register_dto.RegisterUserRequestDTO) error
 
+	SendPhoneCallCode(ctx context.Context, phone string) error
 	VerifyTrustCode(ctx context.Context, verifyCode register_dto.VerifyCodeDTO) error
 
 	CheckEmail(ctx context.Context, email string) (bool, error)
@@ -118,6 +119,44 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			ExpiresIn:   authResult.ExpiresInAccess,
 		},
 	})
+}
+
+// @Summary Send call code
+// @Description Инициализация звонка с проверочным кодом через Zvonok
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body register_dto.SendPhoneCodeDTO true "Номер телефона"
+// @Success 200 {object} response.ApiResponse
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/users/send-call-code [post]
+func (h *AuthHandler) SendCallCode(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req register_dto.SendPhoneCodeDTO
+	err := render.DecodeJSON(r.Body, &req)
+	if err != nil || req.Phone == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("phone is required")))
+		return
+	}
+
+	err = h.authService.SendPhoneCallCode(ctx, req.Phone)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, response.SuccessResponse("call initiated"))
 }
 
 // @Summary Check email existence

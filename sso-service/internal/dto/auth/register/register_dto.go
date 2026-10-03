@@ -37,6 +37,10 @@ type CheckCredentialDTO struct {
 	Credential string `json:"credential"`
 }
 
+type SendPhoneCodeDTO struct {
+	Phone string `json:"phone"`
+}
+
 // func (dto *RegisterUserRequestDTO) UnmarshalJSON(data []byte) error {
 // 	// Временная структура с полями-строками
 // 	type Alias struct {
