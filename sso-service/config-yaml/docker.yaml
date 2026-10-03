@@ -1,10 +1,11 @@
 env: "dev"
 
 DB_INFO:
+  scheme: "postgres"
   host: "sso-db"
-  name: "SSOServiceDB"
-  user: "sso_user"
-  pass: "sso_pass"
+  name: "ExtremeCourse"
+  user: "course_user"
+  pass: "course_pass"
   ssl_model: "disable"
 
 
@@ -18,6 +19,11 @@ JWT_INFO:
   refresh_duration: 7
 
 
+MIGRATION_INFO: 
+  automigrate: true
+  driver: "pgx"
+  migration_path: "internal/migrations"
+
 REDIS_INFO:
   address_path: "redis:6379"
 
@@ -27,9 +33,6 @@ RABBIT_INFO:
 
 ADDITIONAL_ADDRESSES:
   react: "http://172.16.1.39:5173"
-  jure-assignments: "http://172.16.1.39:8090"
-  olymp-result: "http://172.16.0.94:8080"
-  event: "http://172.16.1.39:8080"
 
 ADDITIONAL_SERVICE_ADDRESSES:
   notification_path: "http://localhost:6611/email/send-code"

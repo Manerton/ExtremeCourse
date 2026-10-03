@@ -1,15 +1,16 @@
 env: "local"
 
 DB_INFO:
+  scheme: "postgres"
   host: "localhost"
-  name: "SSOServiceDB"
+  port: 5432 
+  name: "ExtremeCourse"
   user: "postgres"
   pass: "root"
   ssl_model: "disable"
 
-
 HTTP_SERVER_INFO:
-  host: "localhost"
+  host: "127.0.0.1" # Или "localhost"
   port: "8181"
 
 JWT_INFO:
@@ -17,8 +18,23 @@ JWT_INFO:
   access_duration: 15
   refresh_duration: 7
 
+MIGRATION_INFO:
+  automigrate: true
+  driver: "pgx"
+  migration_path: "./internal/migrations" # Относительный путь от корня проекта
+
+REDIS_INFO:
+  address_path: "localhost:6379"
+
+RABBIT_INFO:
+  address_path: "amqp://sso-service:sso-password@localhost:5672/"
+  queue_name: "olymp_sso"
+
 ADDITIONAL_ADDRESSES:
   react: "http://localhost:5173"
-  jure-assignments: "http://localhost:8090"
-  olymp-result: "http://localhost:8080"
-  event: "http://localhost:8080"
+
+ADDITIONAL_SERVICE_ADDRESSES:
+  notification_path: "http://localhost:6611/email/send-code"
+
+CREATION_LINKS_TEMPLATE:
+  prefix: "https://vos.schooltech.ru/verifyApplications?access_token="

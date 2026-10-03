@@ -17,7 +17,6 @@ import (
 	"main/internal/lib/liblogger"
 	"main/internal/middleware/base_access"
 	"main/internal/middleware/midlogger"
-	"main/internal/rabbitmq/consumer"
 	"main/internal/repositories/district_repository"
 	"main/internal/repositories/participant_repository"
 	"main/internal/repositories/refresh_repository"
@@ -31,7 +30,6 @@ import (
 	"main/internal/services/user_service"
 	"main/internal/storage/orm"
 	"main/internal/storage/postgresql"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -102,11 +100,6 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	schoolHandler := school_handler.New(schoolService)
 	districtHandler := district_handler.New(districtService)
 	linkHandler := link_handler.New(linkService)
-
-	// init rabbitMQ
-	rabbitConsumer := consumer.New(log, cfg.AddressRabbitPath, userService, participantService, authService, schoolService)
-	rabbitConsumer.Start(context.Background(), cfg.QueueName)
-	log.Info("rabbit started")
 
 	// init router
 	router := chi.NewRouter()
@@ -200,15 +193,13 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Put("/api/participants/{id}", participantHandler.Update)
 		r.Put("/api/schools/{id}", schoolHandler.Update)
 
-		// r.Put("/schools/{id}", sch)
-
 		r.Delete("/api/users/{id}", userHandler.Delete)
 	})
 }
 
 func (a *App) initCors(router *chi.Mux, cfg config.AdditionalAddressesConfig) {
 	corsOptions := cors.Options{
-		AllowedOrigins: []string{cfg.ReactVision, cfg.JureAssignmentsService},
+		AllowedOrigins: []string{cfg.ReactVision},
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders: []string{
 			"Accept",
@@ -229,8 +220,8 @@ func (a *App) initCors(router *chi.Mux, cfg config.AdditionalAddressesConfig) {
 	router.Use(cors.Handler(corsOptions))
 }
 
-func (a *App) MustRun() {
-	if err := a.Run(context.Background()); err != nil {
+func (a *App) MustRun(ctx context.Context) {
+	if err := a.Run(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -268,18 +259,18 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 	a.log.Info("http server started")
 
-	go func() {
-		grpcListener, err := net.Listen("tcp", a.grpcAddress)
-		if err != nil {
-			serverError <- err
-			return
-		}
+	// go func() {
+	// 	grpcListener, err := net.Listen("tcp", a.grpcAddress)
+	// 	if err != nil {
+	// 		serverError <- err
+	// 		return
+	// 	}
 
-		if err := a.grpcServer.Serve(grpcListener); err != nil {
-			serverError <- err
-		}
-	}()
-	a.log.Info("grpc server starting")
+	// 	if err := a.grpcServer.Serve(grpcListener); err != nil {
+	// 		serverError <- err
+	// 	}
+	// }()
+	// a.log.Info("grpc server starting")
 
 	select {
 	case <-ctx.Done():

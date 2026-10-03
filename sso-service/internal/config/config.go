@@ -65,10 +65,7 @@ type CreationLinkConfig struct {
 }
 
 type AdditionalAddressesConfig struct {
-	ReactVision            string `yaml:"react"`
-	JureAssignmentsService string `yaml:"jure-assignments"`
-	Event                  string `yaml:"event"`
-	OlympiadResult         string `yaml:"olympiad"`
+	ReactVision string `yaml:"react"`
 }
 
 func (cfg *Config) GetDataSourceName() string {

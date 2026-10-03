@@ -234,26 +234,6 @@ func (s *ApplicationService) SetParticipantCode(ctx context.Context, eventIDStr 
 	return nil
 }
 
-func (s *ApplicationService) sheetInformProfileCheck(application models.Application) (string, bool) {
-	informationSubject := "80000000-0000-1234-0000-000000000004"
-	if application.EventID.String() != informationSubject {
-		return "", false
-	}
-
-	switch application.Profile {
-	case "Программирование":
-		return "ПМ", true
-	case "Информационная безопасность":
-		return "ИБ", true
-	case "Искусственный интеллект":
-		return "ИИ", true
-	case "Робототехника":
-		return "РТ", true
-	}
-
-	return "", false
-}
-
 // Создание новой заявки
 func (s *ApplicationService) CreateApplication(ctx context.Context, applicationDTO ApplicationDto.CreateApplicationDTO) (uuid.UUID, error) {
 	const op = "services.application_service.CreateApplication"
@@ -319,7 +299,6 @@ func ConvertDTOtoApplication(dto ApplicationDto.CreateApplicationDTO) models.App
 		EventID:            eventUid,
 		SchoolID:           schoolUid,
 		ClassParticipation: dto.ClassParticipation,
-		Profile:            dto.Profile,
 	}
 }
 
@@ -363,7 +342,6 @@ func ConvertApplicationToDTO(application models.Application) ApplicationDto.Appl
 		//EventName:     application.EventName,
 		//EventLocation: application.EventLocation,
 		//EventDate:     application.EventDate,
-		Profile:            application.Profile,
 		ClassParticipation: application.ClassParticipation,
 		Status:             application.Status,
 

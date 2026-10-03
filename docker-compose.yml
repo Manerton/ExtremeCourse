@@ -13,33 +13,34 @@ services:
   #   networks:
   #     - olympic
 
-  vision:
-      build:
-        context: ./vision
-        dockerfile: Dockerfile.dev
-      container_name: vision_app
-      working_dir: /app
-      volumes:
-        - ./vision:/app
-        - ./vision/.env:/app/.env
-        - /app/node_modules  # Для NPM-совместимости
-      ports:
-        - "5173:5173"
-      networks:
-        - olympic
-      environment:
-        - CHOKIDAR_USEPOLLING=true
-        - WATCHPACK_POLLING=true
-        - HOST=0.0.0.0
-        - VITE_API_URL=http://localhost:6611
+  # vision:
+  #     build:
+  #       context: ./vision
+  #       dockerfile: Dockerfile.dev
+  #     container_name: vision_app
+  #     working_dir: /app
+  #     volumes:
+  #       - ./vision:/app
+  #       - ./vision/.env:/app/.env
+  #       - /app/node_modules  # Для NPM-совместимости
+  #     ports:
+  #       - "5173:5173"
+  #     networks:
+  #       - olympic
+  #     environment:
+  #       - CHOKIDAR_USEPOLLING=true
+  #       - WATCHPACK_POLLING=true
+  #       - HOST=0.0.0.0
+  #       - VITE_API_URL=http://localhost:6611
 
   sso-db:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: sso-db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: sso_user
-      POSTGRES_PASSWORD: sso_pass
-      POSTGRES_DB: SSOServiceDB
+      POSTGRES_USER: course_user
+      POSTGRES_PASSWORD: course_pass
+      POSTGRES_DB: ExtremeCourse
     ports:
       - "5444:5432"
     networks:
@@ -47,7 +48,7 @@ services:
     volumes:
       - sso-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U sso_user -d SSOServiceDB" ]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -55,35 +56,37 @@ services:
   sso-service:
     build:
       context: ./sso-service
+      dockerfile: Dockerfile
     container_name: sso-service
+    restart: unless-stopped
     depends_on:
       sso-db:
         condition: service_healthy
     environment:
-      DSN: "postgres://sso_user:sso_pass@sso-db:5432/SSOServiceDB?sslmode=disable"
-      MIGRATION_PATH: "/app/migrations"
-      CONFIG_PATH: "/app/config-yaml/docker.yaml"
+      - CONFIG_PATH=/app/config.yaml
+    volumes:
+      - ./sso-service/config-yaml/docker.yaml:/app/config.yaml:ro
+
     networks:
       - olympic
     ports:
       - "8989:8181"
-    entrypoint: [ "/bin/sh", "-c", "./migrator -dsn \"$DSN\" -migration-path \"$MIGRATION_PATH\" up && ./sso-service" ]
   
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_server
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/nginx/default.conf:/etc/nginx/nginx.conf
-      - ./olymp-admin/public:/var/www/olymp-admin/public
-      - ./olymp-notification/web:/var/www/olymp-notification/web
-    depends_on:
-      - olymp-admin
-      - olympic-notification
-    networks:
-      - olympic
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: nginx_server
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./docker/nginx/default.conf:/etc/nginx/nginx.conf
+  #     - ./olymp-admin/public:/var/www/olymp-admin/public
+  #     - ./olymp-notification/web:/var/www/olymp-notification/web
+  #   depends_on:
+  #     - olymp-admin
+  #     - olympic-notification
+  #   networks:
+  #     - olympic
 
   redis:
     image: redis:latest
