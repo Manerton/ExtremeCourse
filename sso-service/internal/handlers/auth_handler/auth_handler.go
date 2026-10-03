@@ -44,13 +44,15 @@ func New(authService AuthService) *AuthHandler {
 }
 
 // @Summary Login
-// @Description Авторизация пользователя
+// @Description Авторизация пользователя по логину и паролю
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param credentials body login_dto.LoginRequestDTO true "Данные для входа"
-// @Success 200 {object} response.ApiResponse
+// @Success 200 {object} response.ApiResponse{data=login_dto.LoginResponseDTO}
+// @Failure 400 {object} response.ApiResponse
 // @Failure 401 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -118,6 +120,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @Summary Check email existence
+// @Description Проверка занятости email адреса
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body register_dto.CheckCredentialDTO true "Email для проверки"
+// @Success 200 {object} response.ApiResponse{data=bool}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/users/check-email [post]
 func (h *AuthHandler) CheckEmail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -147,9 +159,18 @@ func (h *AuthHandler) CheckEmail(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusOK,
 		Data:       result,
 	})
-
 }
 
+// @Summary Check phone existence
+// @Description Проверка занятости номера телефона
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body register_dto.CheckCredentialDTO true "Телефон для проверки"
+// @Success 200 {object} response.ApiResponse{data=bool}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/users/check-phone [post]
 func (h *AuthHandler) CheckPhone(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -179,15 +200,15 @@ func (h *AuthHandler) CheckPhone(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusOK,
 		Data:       result,
 	})
-
 }
 
-// @Summery Logout
-// @Description Выход из учётной записи
+// @Summary Logout
+// @Description Выход из учётной записи (инвалидация refresh токена из cookies)
 // @Tags auth
 // @Produce json
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -227,14 +248,15 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.SuccessResponse("success logout"))
 }
 
-// @Summery Register
-// @Description Регистрация пользователя как ученика
+// @Summary Register
+// @Description Регистрация нового пользователя в качестве участника/ученика
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param credentials body register_dto.RegisterParticipantRequestDTO true "Данные для регистрации"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -265,15 +287,16 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.SuccessResponse("Register success"))
 }
 
-// @Summery AdminRegister
+// @Summary AdminRegister
 // @Security BearerAuth
-// @Description Регистрация пользователя для админа
+// @Description Регистрация пользователя администратором
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param credentials body register_dto.RegisterUserRequestDTO true "Данные для регистрации от панели админа"
+// @Param credentials body register_dto.RegisterUserRequestDTO true "Данные для регистрации от панели администратора"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/byadmin/register [post]
 func (h *AuthHandler) AdminRegister(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -311,6 +334,7 @@ func (h *AuthHandler) AdminRegister(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Success 200 {object} response.ApiResponse{data=login_dto.LoginResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -357,6 +381,16 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @Summary Verify trust code
+// @Description Проверка доверенного кода подтверждения
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body register_dto.VerifyCodeDTO true "Код подтверждения"
+// @Success 200 {object} response.ApiResponse{data=bool}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/users/verify-code [post]
 func (h *AuthHandler) VerifyTrustCode(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -389,15 +423,15 @@ func (h *AuthHandler) VerifyTrustCode(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery Password recovery
-// @Security BearerAuth
-// @Description Восстановление забытого пароля
+// @Summary Password recovery
+// @Description Запрос на восстановление забытого пароля
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param credentials body recover_dto.ForgotPasswordDTORequest true "Данные для востоновления забытого пароля"
+// @Param credentials body recover_dto.ForgotPasswordDTORequest true "Данные для восстановления забытого пароля"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/forgot-password [post]
 func (h *AuthHandler) RecoveryPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -427,14 +461,15 @@ func (h *AuthHandler) RecoveryPassword(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.SuccessResponse("Password success recovered"))
 }
 
-// @Summery Revoke token
+// @Summary Revoke token
 // @Security BearerAuth
-// @Description Блокировка refresh токена
+// @Description Блокировка конкретного refresh токена по его ID
 // @Tags auth
 // @Produce json
-// @Param id path string true "id refresh токена"
+// @Param id path string true "ID refresh токена"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/revoke/{id} [post]
 func (h *AuthHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -457,14 +492,15 @@ func (h *AuthHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.SuccessResponse("success token revoked"))
 }
 
-// @Summery Revoke all token by user
+// @Summary Revoke all tokens by user
 // @Security BearerAuth
-// @Description Блокировка всех refresh токенов пользователя
+// @Description Блокировка всех refresh токенов пользователя по его ID
 // @Tags auth
 // @Produce json
-// @Param id path string true "id пользователя"
+// @Param id path string true "ID пользователя"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/revoke-all/{id} [post]
 func (h *AuthHandler) RevokeAllUserTokens(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

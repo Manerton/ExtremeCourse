@@ -15,8 +15,6 @@ RUN go build -o sso-service ./cmd/server/main.go
 # Второй этап: используем минимальный образ для запуска приложения
 FROM alpine:latest
 
-
-
 # Рабочая директория в контейнере
 WORKDIR /app
 

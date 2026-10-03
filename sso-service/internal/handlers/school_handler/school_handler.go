@@ -39,13 +39,14 @@ func New(schoolService SchoolService) *SchoolHandler {
 	}
 }
 
-// @Summery count
+// @Summary School count
 // @Security BearerAuth
 // @Description Получение количества школ
 // @Tags schools
 // @Produce json
-// @Success 200 {object} response.ApiResponse{data=int}
+// @Success 200 {object} response.ApiResponse{data=int64}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/schools/count [get]
 func (h *SchoolHandler) GetCount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -68,9 +69,18 @@ func (h *SchoolHandler) GetCount(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusOK,
 		Data:       schoolCount,
 	})
-
 }
 
+// @Summary Get all schools by district
+// @Security BearerAuth
+// @Description Получение всех школ по ID района
+// @Tags schools
+// @Produce json
+// @Param id path string true "ID района"
+// @Success 200 {object} response.ApiResponse{data=[]school_dto.SchoolResponseDTO}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/schools/district/{id} [get]
 func (h *SchoolHandler) GetAllByDistrict(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -96,15 +106,16 @@ func (h *SchoolHandler) GetAllByDistrict(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// @Summery all
+// @Summary All schools
 // @Security BearerAuth
-// @Description Получение всех школ
+// @Description Получение всех школ с пагинацией
 // @Tags schools
 // @Produce json
 // @Param page query int false "Номер страницы"
 // @Param limit query int false "Ограничение на количество записей"
 // @Success 200 {object} response.ApiResponse{data=[]school_dto.SchoolResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/schools [get]
 func (h *SchoolHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -139,14 +150,15 @@ func (h *SchoolHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery by id
+// @Summary Get school by id
 // @Security BearerAuth
-// @Description Получение школы по id
+// @Description Получение школы по ID
 // @Tags schools
 // @Produce json
-// @Param id path string true "id школы"
+// @Param id path string true "ID школы"
 // @Success 200 {object} response.ApiResponse{data=school_dto.SchoolResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/schools/{id} [get]
 func (h *SchoolHandler) GetById(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -173,7 +185,7 @@ func (h *SchoolHandler) GetById(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery create
+// @Summary Create school
 // @Security BearerAuth
 // @Description Создание школы
 // @Tags schools
@@ -182,6 +194,7 @@ func (h *SchoolHandler) GetById(w http.ResponseWriter, r *http.Request) {
 // @Param credentials body school_dto.CreateSchoolRequestDTO true "Данные для создания школы"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/schools [post]
 func (h *SchoolHandler) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -210,16 +223,17 @@ func (h *SchoolHandler) Create(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.SuccessResponse("success create"))
 }
 
-// @Summery update
+// @Summary Update school
 // @Security BearerAuth
-// @Description Обновление школы
+// @Description Обновление данных школы
 // @Tags schools
 // @Accept json
 // @Produce json
+// @Param id path string true "ID школы"
 // @Param credentials body school_dto.UpdateSchoolRequestDTO true "Данные для обновления школы"
-// @Param id path string true "id пользователя"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/schools/{id} [put]
 func (h *SchoolHandler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

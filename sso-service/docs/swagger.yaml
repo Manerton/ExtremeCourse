@@ -1,4 +1,4 @@
-basePath: /
+basePath: /backend
 definitions:
   login_dto.LoginRequestDTO:
     properties:
@@ -20,12 +20,12 @@ definitions:
   participant_dto.ParticipantResponseDTO:
     properties:
       citizenship:
-        type: string
+        type: integer
       class_number:
-        type: string
+        type: integer
       disability:
-        type: string
-      id:
+        type: integer
+      participant_id:
         type: string
       school_id:
         type: string
@@ -37,7 +37,7 @@ definitions:
       citizenship:
         type: string
       class_number:
-        type: string
+        type: integer
       disability:
         type: string
       school_id:
@@ -129,25 +129,31 @@ definitions:
     type: object
   school_dto.CreateSchoolRequestDTO:
     properties:
-      name:
+      district_id:
         type: string
-      region:
+      full_name:
+        type: string
+      name:
         type: string
     type: object
   school_dto.SchoolResponseDTO:
     properties:
+      district_id:
+        type: string
+      full_name:
+        type: string
       id:
         type: string
       name:
         type: string
-      region:
-        type: integer
     type: object
   school_dto.UpdateSchoolRequestDTO:
     properties:
-      name:
+      district_id:
         type: string
-      region:
+      full_name:
+        type: string
+      name:
         type: string
     type: object
   user_dto.SearchAttributesUserDTO:
@@ -199,11 +205,11 @@ definitions:
       birthdate:
         type: string
       citizenship:
-        type: string
+        type: integer
       class_number:
-        type: string
+        type: integer
       disability:
-        type: string
+        type: integer
       email:
         type: string
       firstname:
@@ -211,6 +217,8 @@ definitions:
       gender:
         type: integer
       id:
+        type: string
+      participant_id:
         type: string
       patronymic:
         type: string
@@ -248,11 +256,10 @@ definitions:
       surname:
         type: string
     type: object
-host: localhost:8181
 info:
   contact: {}
-  description: Документация к микросервису авторизации
-  title: SSO Service API
+  description: Документация к backend части сайта
+  title: Backend
   version: "1.0"
 paths:
   /api/byadmin/register:

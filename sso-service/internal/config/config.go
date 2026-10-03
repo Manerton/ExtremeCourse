@@ -18,14 +18,22 @@ type Config struct {
 	RedisConfig                `yaml:"REDIS_INFO"`
 	RabbitConfig               `yaml:"RABBIT_INFO"`
 	CreationLinkConfig         `yaml:"CREATION_LINKS_TEMPLATE"`
+	MigrationConfig            `yaml:"MIGRATION_INFO"`
 }
 
 type DatabaseConfig struct {
+	Scheme   string `yaml:"scheme"`
 	Host     string `yaml:"host"`
 	Name     string `yaml:"name"`
 	User     string `yaml:"user"`
 	Password string `yaml:"pass"`
 	SslModel string `yaml:"ssl_model"`
+}
+
+type MigrationConfig struct {
+	AutoMigrate   bool   `yaml:"automigrate"`
+	Driver        string `yaml:"driver"`
+	MigrationPath string `yaml:"migration_path"`
 }
 
 type HTTPServerConfig struct {
@@ -79,23 +87,21 @@ func (cfg *Config) GetAddress() string {
 	return fmt.Sprintf("%s:%s", cfg.HTTPServerConfig.Host, cfg.HTTPServerConfig.Port)
 }
 
-func MustConfig(configPath string) *Config {
-	envConfigPath := os.Getenv("CONFIG_PATH")
-	if envConfigPath == "" {
-		envConfigPath = configPath
-		if envConfigPath == "" {
-			log.Fatalf("CONFIG PATH is not set")
-		}
+func MustConfigLoad() *Config {
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config-yaml/local.yaml"
 	}
 
-	if _, err := os.Stat(envConfigPath); os.IsNotExist(err) {
-		log.Fatalf("config file does not exist: %s", envConfigPath)
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		log.Fatalf("config file does not exist: %s", configPath)
 	}
 
-	var myconfig Config
-	if err := cleanenv.ReadConfig(envConfigPath, &myconfig); err != nil {
-		log.Fatalf("Can not read config file %s: %s", envConfigPath, err)
+	cfg := Config{}
+
+	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
+		log.Fatalf("failed read config: %v", err)
 	}
 
-	return &myconfig
+	return &cfg
 }

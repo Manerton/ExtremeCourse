@@ -1,0 +1,15 @@
+version: "3"
+
+tasks: 
+  swagger: 
+    aliases: [swag]
+    desc: "Generate swagger code"
+    dir: "{{.TASKFILE_DIR}}"
+    cmds: 
+      - swag init -g cmd/server/main.go -o ./docs
+
+  start:
+    aliases: [start]
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - go run ./cmd/server/main.go

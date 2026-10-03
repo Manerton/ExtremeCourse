@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"main/internal/config"
@@ -30,25 +31,47 @@ import (
 	"main/internal/services/user_service"
 	"main/internal/storage/orm"
 	"main/internal/storage/postgresql"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/pressly/goose/v3"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"google.golang.org/grpc"
 )
 
 type App struct {
-	server *http.Server
-	log    *slog.Logger
+	server      *http.Server
+	grpcServer  *grpc.Server
+	grpcAddress string
+	log         *slog.Logger
 }
 
 func New(log *slog.Logger, cfg *config.Config) *App {
-
+	app := &App{log: log}
 	// init storage
 	storage := postgresql.MustPosgreSQL(cfg.GetDataSourceName())
 	log.Info("storage are enabled")
+
+	if cfg.AutoMigrate {
+		migrationCtx, stopMigration := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
+		log.Info("running database migrations...")
+		err := app.autoMigrate(migrationCtx, cfg.GetDataSourceName(), cfg.Driver, cfg.Scheme, cfg.MigrationPath)
+		if err != nil {
+			stopMigration()
+			log.Info("migration stage failed", "error", err)
+			os.Exit(1)
+		}
+		stopMigration()
+		log.Info("migrations applied successfully")
+	}
 
 	// init orm
 	gormORM := orm.NewGormORM(storage)
@@ -88,7 +111,6 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	// init router
 	router := chi.NewRouter()
 
-	app := &App{log: log}
 	// init cors
 	app.initCors(router, cfg.AdditionalAddressesConfig)
 	// init middleware
@@ -208,28 +230,77 @@ func (a *App) initCors(router *chi.Mux, cfg config.AdditionalAddressesConfig) {
 }
 
 func (a *App) MustRun() {
-	if err := a.Run(); err != nil {
+	if err := a.Run(context.Background()); err != nil {
 		panic(err)
 	}
 }
 
-func (a *App) Run() error {
-	const op = "app.Run"
+func (a *App) autoMigrate(ctx context.Context, dsn, driver, scheme, pathMigration string) error {
+	if err := goose.SetDialect(scheme); err != nil {
+		return err
+	}
 
-	a.log.Info("server starting")
-	if err := a.server.ListenAndServe(); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+	db, err := goose.OpenDBWithDriver(driver, dsn)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if errClose := db.Close(); errClose != nil {
+			a.log.Error("failed to close migration db connection", "error", errClose)
+		}
+	}()
+
+	if err := goose.UpContext(ctx, db, pathMigration); err != nil {
+		a.log.Error("failed up command to migrate", liblogger.Err(err))
+		return fmt.Errorf("failed up command: %w", err)
 	}
 	return nil
 }
 
-func (a *App) Stop() {
+func (a *App) Run(ctx context.Context) error {
+	const op = "app.Run"
+
+	serverError := make(chan error, 2)
+	go func() {
+		if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverError <- err
+		}
+	}()
+	a.log.Info("http server started")
+
+	go func() {
+		grpcListener, err := net.Listen("tcp", a.grpcAddress)
+		if err != nil {
+			serverError <- err
+			return
+		}
+
+		if err := a.grpcServer.Serve(grpcListener); err != nil {
+			serverError <- err
+		}
+	}()
+	a.log.Info("grpc server starting")
+
+	select {
+	case <-ctx.Done():
+		a.log.Info("shutting down server gracefully...")
+		if err := a.Stop(); err != nil {
+			return fmt.Errorf("%s: graceful shutdown failed: %w", op, err)
+		}
+		return nil
+	case err := <-serverError:
+		return fmt.Errorf("%s: server startup failed: %w", op, err)
+	}
+}
+
+func (a App) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := a.server.Shutdown(ctx); err != nil {
-		a.log.Error("failed to stop server", liblogger.Err(err))
-		return
+		return fmt.Errorf("server shutdown with error: %w", err)
 	}
-	a.log.Info("server stopped")
+
+	a.grpcServer.GracefulStop()
+	return nil
 }

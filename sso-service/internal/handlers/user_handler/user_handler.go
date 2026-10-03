@@ -45,13 +45,14 @@ func New(userService UserService) *UserHandler {
 	}
 }
 
-// @Summery Users count
+// @Summary Users count
 // @Security BearerAuth
 // @Description Получение количества пользователей
 // @Tags users
 // @Produce json
-// @Success 200 {object} response.ApiResponse{data=int}
+// @Success 200 {object} response.ApiResponse{data=int64}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/count [get]
 func (h *UserHandler) GetCountUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -76,7 +77,7 @@ func (h *UserHandler) GetCountUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery All users
+// @Summary All users
 // @Security BearerAuth
 // @Description Получение всех пользователей
 // @Tags users
@@ -85,6 +86,7 @@ func (h *UserHandler) GetCountUsers(w http.ResponseWriter, r *http.Request) {
 // @Param limit query int false "Ограничение на количество записей"
 // @Success 200 {object} response.ApiResponse{data=[]user_dto.UserResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users [get]
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -119,7 +121,7 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery Get user by filter
+// @Summary Get user by filter
 // @Security BearerAuth
 // @Description Получение пользователя по фильтру из его полей
 // @Tags users
@@ -128,6 +130,7 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Param credentials body user_dto.SearchAttributesUserDTO true "Данные для поиска пользователя"
 // @Success 200 {object} response.ApiResponse{data=user_dto.UserResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/filter [post]
 func (h *UserHandler) GetUserByFilter(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -160,15 +163,16 @@ func (h *UserHandler) GetUserByFilter(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery Get user type role
+// @Summary Get users by role
 // @Security BearerAuth
 // @Description Получение всех пользователей по роли
 // @Tags users
-// @Accept json
 // @Produce json
-// @Success 200 {object} response.ApiResponse{data=user_dto.UserResponseDTO}
+// @Param role query string true "Роль пользователя"
+// @Success 200 {object} response.ApiResponse{data=[]user_dto.UserResponseDTO}
 // @Failure 400 {object} response.ApiResponse
-// @Router /api/users/by-role [post]
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/users/by-role [get]
 func (h *UserHandler) GetUsersByRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -194,14 +198,15 @@ func (h *UserHandler) GetUsersByRole(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery Get user by id
+// @Summary Get user by id
 // @Security BearerAuth
 // @Description Получение пользователя по id
 // @Tags users
 // @Produce json
-// @Param id path string true "id пользователя"
+// @Param id path string true "ID пользователя"
 // @Success 200 {object} response.ApiResponse{data=user_dto.UserResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/{id} [get]
 func (h *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -228,14 +233,15 @@ func (h *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery Get full user participant info
+// @Summary Get full user participant info
 // @Security BearerAuth
-// @Description Получение всей информации о пользователе ученике
+// @Description Получение всей информации о пользователе-ученике по ID
 // @Tags users
 // @Produce json
-// @Param id path string true "id пользователя"
+// @Param id path string true "ID пользователя"
 // @Success 200 {object} response.ApiResponse{data=user_dto.UserParticipantResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/all-info/{id} [get]
 func (h *UserHandler) GetUserParticipantById(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -262,6 +268,15 @@ func (h *UserHandler) GetUserParticipantById(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// @Summary Get all user participants info
+// @Security BearerAuth
+// @Description Получение всей информации обо всех пользователях-учениках
+// @Tags users
+// @Produce json
+// @Success 200 {object} response.ApiResponse{data=[]user_dto.UserParticipantResponseDTO}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/users/all-info [get]
 func (h *UserHandler) GetAllUserParticipantInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -285,6 +300,17 @@ func (h *UserHandler) GetAllUserParticipantInfo(w http.ResponseWriter, r *http.R
 	})
 }
 
+// @Summary Get user participants by list id
+// @Security BearerAuth
+// @Description Получение информации об участниках по списку ID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param ids body request.IdsRequest true "Список ID пользователей"
+// @Success 200 {object} response.ApiResponse{data=[]user_dto.UserParticipantResponseDTO}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/users/participants-by-list [post]
 func (h *UserHandler) GetUserParticipantByListId(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -315,10 +341,9 @@ func (h *UserHandler) GetUserParticipantByListId(w http.ResponseWriter, r *http.
 		StatusCode: http.StatusOK,
 		Data:       result,
 	})
-
 }
 
-// @Summery Get users by list id
+// @Summary Get users by list id
 // @Security BearerAuth
 // @Description Получение пользователей по списку id
 // @Tags users
@@ -327,6 +352,7 @@ func (h *UserHandler) GetUserParticipantByListId(w http.ResponseWriter, r *http.
 // @Param credentials body request.IdsRequest true "Список id пользователей"
 // @Success 200 {object} response.ApiResponse{data=[]user_dto.UserResponseDTO}
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/list [post]
 func (h *UserHandler) GetUsersByListId(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -360,16 +386,17 @@ func (h *UserHandler) GetUsersByListId(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summery Change password
+// @Summary Change password
 // @Security BearerAuth
 // @Description Изменение пароля пользователя
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param id path string true "ID пользователя"
 // @Param credentials body recover_dto.ChangePasswordDTORequest true "Данные для изменения пароля"
-// @Param id path string true "id пользователя"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/change-password/{id} [post]
 func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -400,16 +427,17 @@ func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.SuccessResponse("success password change"))
 }
 
-// @Summery Update user
+// @Summary Update user
 // @Security BearerAuth
 // @Description Обновление пользователя
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param id path string true "ID пользователя"
 // @Param credentials body user_dto.UpdateUserRequestDTO true "Данные для обновления пользователя"
-// @Param id path string true "id пользователя"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/{id} [put]
 func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -440,14 +468,15 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, response.SuccessResponse("success user update"))
 }
 
-// @Summery Delete user
+// @Summary Delete user
 // @Security BearerAuth
 // @Description Удаление пользователя
 // @Tags users
 // @Produce json
-// @Param id path string true "id пользователя"
+// @Param id path string true "ID пользователя"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
 // @Router /api/users/{id} [delete]
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

@@ -1329,15 +1329,15 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "citizenship": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "class_number": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "disability": {
-                    "type": "string"
+                    "type": "integer"
                 },
-                "id": {
+                "participant_id": {
                     "type": "string"
                 },
                 "school_id": {
@@ -1355,7 +1355,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "class_number": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "disability": {
                     "type": "string"
@@ -1496,10 +1496,13 @@ const docTemplate = `{
         "school_dto.CreateSchoolRequestDTO": {
             "type": "object",
             "properties": {
-                "name": {
+                "district_id": {
                     "type": "string"
                 },
-                "region": {
+                "full_name": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -1507,24 +1510,30 @@ const docTemplate = `{
         "school_dto.SchoolResponseDTO": {
             "type": "object",
             "properties": {
+                "district_id": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
-                },
-                "region": {
-                    "type": "integer"
                 }
             }
         },
         "school_dto.UpdateSchoolRequestDTO": {
             "type": "object",
             "properties": {
-                "name": {
+                "district_id": {
                     "type": "string"
                 },
-                "region": {
+                "full_name": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -1603,13 +1612,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "citizenship": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "class_number": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "disability": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "email": {
                     "type": "string"
@@ -1621,6 +1630,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "participant_id": {
                     "type": "string"
                 },
                 "patronymic": {
@@ -1691,11 +1703,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8181",
-	BasePath:         "/",
+	Host:             "",
+	BasePath:         "/backend",
 	Schemes:          []string{},
-	Title:            "SSO Service API",
-	Description:      "Документация к микросервису авторизации",
+	Title:            "Backend",
+	Description:      "Документация к backend части сайта",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

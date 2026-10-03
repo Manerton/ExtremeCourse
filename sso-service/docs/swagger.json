@@ -1,13 +1,12 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Документация к микросервису авторизации",
-        "title": "SSO Service API",
+        "description": "Документация к backend части сайта",
+        "title": "Backend",
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8181",
-    "basePath": "/",
+    "basePath": "/backend",
     "paths": {
         "/api/byadmin/register": {
             "post": {
@@ -1323,15 +1322,15 @@
             "type": "object",
             "properties": {
                 "citizenship": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "class_number": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "disability": {
-                    "type": "string"
+                    "type": "integer"
                 },
-                "id": {
+                "participant_id": {
                     "type": "string"
                 },
                 "school_id": {
@@ -1349,7 +1348,7 @@
                     "type": "string"
                 },
                 "class_number": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "disability": {
                     "type": "string"
@@ -1490,10 +1489,13 @@
         "school_dto.CreateSchoolRequestDTO": {
             "type": "object",
             "properties": {
-                "name": {
+                "district_id": {
                     "type": "string"
                 },
-                "region": {
+                "full_name": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -1501,24 +1503,30 @@
         "school_dto.SchoolResponseDTO": {
             "type": "object",
             "properties": {
+                "district_id": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
-                },
-                "region": {
-                    "type": "integer"
                 }
             }
         },
         "school_dto.UpdateSchoolRequestDTO": {
             "type": "object",
             "properties": {
-                "name": {
+                "district_id": {
                     "type": "string"
                 },
-                "region": {
+                "full_name": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -1597,13 +1605,13 @@
                     "type": "string"
                 },
                 "citizenship": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "class_number": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "disability": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "email": {
                     "type": "string"
@@ -1615,6 +1623,9 @@
                     "type": "integer"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "participant_id": {
                     "type": "string"
                 },
                 "patronymic": {
