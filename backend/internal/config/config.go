@@ -55,7 +55,16 @@ type JwtConfig struct {
 }
 
 type RedisConfig struct {
-	AddressRedisPath string `yaml:"address_path"`
+	Host       string `yaml:"host"`
+	Port       string `yaml:"port"`
+	Username   string `yaml:"username"`
+	Password   string `yaml:"password"`
+	DB         int    `yaml:"db"`
+	StreamName string `yaml:"stream_name"`
+}
+
+func (r *RedisConfig) GetRedisAddress() string {
+	return fmt.Sprintf("%s:%s", r.Host, r.Port)
 }
 
 type RabbitConfig struct {

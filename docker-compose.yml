@@ -33,9 +33,9 @@ services:
   #       - HOST=0.0.0.0
   #       - VITE_API_URL=http://localhost:6611
 
-  sso-db:
+  backend-db:
     image: postgres:16-alpine
-    container_name: sso-db
+    container_name: backend-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: course_user
@@ -44,65 +44,51 @@ services:
     ports:
       - "5444:5432"
     networks:
-      - olympic
+      - courses
     volumes:
-      - sso-db-data:/var/lib/postgresql/data
+      - backend-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 5
 
-  sso-service:
+  backend:
     build:
-      context: ./sso-service
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: sso-service
+    container_name: backend
     restart: unless-stopped
     depends_on:
-      sso-db:
+      backend-db:
         condition: service_healthy
     environment:
       - CONFIG_PATH=/app/config.yaml
     volumes:
-      - ./sso-service/config-yaml/docker.yaml:/app/config.yaml:ro
+      - ./backend/config-yaml/docker.yaml:/app/config.yaml:ro
 
     networks:
-      - olympic
+      - courses
     ports:
-      - "8989:8181"
+      - "8989:8080"
   
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: nginx_server
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./docker/nginx/default.conf:/etc/nginx/nginx.conf
-  #     - ./olymp-admin/public:/var/www/olymp-admin/public
-  #     - ./olymp-notification/web:/var/www/olymp-notification/web
-  #   depends_on:
-  #     - olymp-admin
-  #     - olympic-notification
-  #   networks:
-  #     - olympic
-
   redis:
-    image: redis:latest
-    container_name: olymp_redis
-    restart: always
+    image: redis:alpine
+    container_name: redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    networks: 
+      - courses
     volumes:
       - redis_data:/data
-    networks:
-      - olympic
+      - ./users.acl:/etc/redis/users.acl:ro
+    command: ["redis-server", "--aclfile", "/etc/redis/users.acl"]
 
 networks:
-  olympic:
+  courses:
     driver: bridge
 
 volumes:
-  sso-db-data:
+  backend-db-data:
   redis_data:

@@ -2,7 +2,8 @@ env: "dev"
 
 DB_INFO:
   scheme: "postgres"
-  host: "sso-db"
+  host: "backend-db"
+  port: 5432 
   name: "ExtremeCourse"
   user: "course_user"
   pass: "course_pass"
@@ -11,13 +12,17 @@ DB_INFO:
 
 HTTP_SERVER_INFO:
   host: "0.0.0.0"
-  port: "8181"
+  port: 8080
 
 JWT_INFO:
   key: "lololololololololololololololololololololololololololololol"
   access_duration: 15 
   refresh_duration: 7
 
+ZVONOK_INFO: 
+  campaign_id: "1104562791"
+  public_key: "6e51df92fe070ff50cd301aa39ce38b8"
+  base_url: ""
 
 MIGRATION_INFO: 
   automigrate: true
@@ -25,11 +30,13 @@ MIGRATION_INFO:
   migration_path: "internal/migrations"
 
 REDIS_INFO:
-  address_path: "redis:6379"
+  host: "redis"
+  port: "6379"
+  stream_name: "media:file_tasks"
+  username: "app_user"
+  password: "my_strong_password"
+  db: 0
 
-RABBIT_INFO:
-  address_path: "amqp://sso-service:sso-password@rabbitmq:5672/"
-  queue_name: "olymp_sso"
 
 ADDITIONAL_ADDRESSES:
   react: "http://172.16.1.39:5173"

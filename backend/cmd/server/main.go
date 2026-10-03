@@ -6,6 +6,7 @@ import (
 	"main/internal/app"
 	"main/internal/config"
 	"main/internal/lib/liblogger"
+	redisdb "main/internal/storage/redis"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,7 +24,7 @@ import (
 func main() {
 	cfg := config.MustConfigLoad()
 
-	// TODO add redis
+	redisdb.MustRedisConnect(cfg.RedisConfig)
 
 	log := liblogger.SetupLogger(cfg.Env)
 	log.Info("startint backend server", slog.String("env", cfg.Env))

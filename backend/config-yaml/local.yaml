@@ -24,16 +24,18 @@ MIGRATION_INFO:
   migration_path: "./internal/migrations" # Относительный путь от корня проекта
 
 REDIS_INFO:
-  address_path: "localhost:6379"
+  host: "localhost"
+  port: "6379"
+  stream_name: "media:file_tasks"
+  username: "app_user"
+  password: "my_strong_password"
+  db: 0
 
 ZVONOK_INFO: 
   campaign_id: "1104562791"
   public_key: "6e51df92fe070ff50cd301aa39ce38b8"
   base_url: ""
 
-RABBIT_INFO:
-  address_path: "amqp://sso-service:sso-password@localhost:5672/"
-  queue_name: "olymp_sso"
 
 ADDITIONAL_ADDRESSES:
   react: "http://localhost:5173"

@@ -10,7 +10,7 @@ DB_INFO:
 
 HTTP_SERVER_INFO:
   host: "172.16.1.39"
-  port: "8181"
+  port: "8080"
 
 JWT_INFO:
   key: "lololololololololololololololololololololololololololololol"
