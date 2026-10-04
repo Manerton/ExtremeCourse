@@ -458,11 +458,11 @@ func (s *AuthService) SendPhoneCallCode(ctx context.Context, phone string) error
 	code := verification.GenerateCode()
 
 	// 3. Сохраняем в Redis с TTL (например, 5 минут)
-	// err = redisdb.SetActivationCode(phone, code, 5*time.Minute)
-	// if err != nil {
-	// 	log.Error("failed to save code in redis", liblogger.Err(err))
-	// 	return errs.ErrInternalError.Wrap("failed to save verification code")
-	// }
+	err = redisdb.SetActivationCode(phone, code, 5*time.Minute)
+	if err != nil {
+		log.Error("failed to save code in redis", liblogger.Err(err))
+		return errs.ErrInternalError.Wrap("failed to save verification code")
+	}
 
 	// 4. Отправляем запрос в сервис Zvonok
 	err = s.zvonokClient.SendCallCode(ctx, phone, code)
