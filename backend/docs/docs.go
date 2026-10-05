@@ -66,6 +66,311 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/homeworks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение списка всех опубликованных и активных домашних работ",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Get available homeworks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/homework_dto.HomeworkResponseDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создание новой домашней работы с указанием сроков публикации и дедлайна",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Create homework",
+                "parameters": [
+                    {
+                        "description": "Данные для создания домашней работы",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/homework_dto.CreateHomeworkRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/homeworks/{homework_id}/leaderboard": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение рейтинга учеников по конкретной домашней работе",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Get homework leaderboard",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID домашней работы (UUID)",
+                        "name": "homework_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/homework_dto.StudentHomeworkLeaderboardDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/homeworks/{homework_id}/submit": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Сдача домашней работы пользователем с автоматической проверкой ответов (повторная сдача запрещена)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Submit homework",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID домашней работы (UUID)",
+                        "name": "homework_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID пользователя (UUID), если передается через заголовок",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Ответы пользователя на задачи",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/homework_dto.SubmitHomeworkRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/homework_dto.SubmissionResponseDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/homeworks/{homework_id}/tasks": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Прикрепление существующей задачи к домашней работе",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Add task to homework",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID домашней работы (UUID)",
+                        "name": "homework_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "ID задачи для прикрепления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/homework_dto.AddTaskToHomeworkDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/participants": {
             "get": {
                 "security": [
@@ -677,6 +982,72 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tasks": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создание задачи с вариантами правильных ответов и баллами",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Create task",
+                "parameters": [
+                    {
+                        "description": "Данные для создания задачи",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/homework_dto.CreateTaskRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -1941,6 +2312,158 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "homework_dto.AddTaskToHomeworkDTO": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "homework_dto.CreateHomeworkRequestDTO": {
+            "type": "object",
+            "properties": {
+                "deadline_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "publish_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "homework_dto.CreateTaskRequestDTO": {
+            "type": "object",
+            "properties": {
+                "answers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/homework_dto.TaskAnswerItemDTO"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "max_points": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "homework_dto.HomeworkResponseDTO": {
+            "type": "object",
+            "properties": {
+                "deadline_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "publish_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                }
+            }
+        },
+        "homework_dto.StudentHomeworkLeaderboardDTO": {
+            "type": "object",
+            "properties": {
+                "total_score": {
+                    "type": "integer"
+                },
+                "user_fio": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "homework_dto.SubmissionResponseDTO": {
+            "type": "object",
+            "properties": {
+                "homework_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/homework_dto.TaskResultResponseDTO"
+                    }
+                },
+                "submitted_at": {
+                    "type": "string"
+                },
+                "total_score": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "homework_dto.SubmitAnswerItemDTO": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "homework_dto.SubmitHomeworkRequestDTO": {
+            "type": "object",
+            "properties": {
+                "answers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/homework_dto.SubmitAnswerItemDTO"
+                    }
+                }
+            }
+        },
+        "homework_dto.TaskAnswerItemDTO": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string"
+                },
+                "correct": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "homework_dto.TaskResultResponseDTO": {
+            "type": "object",
+            "properties": {
+                "is_correct": {
+                    "type": "boolean"
+                },
+                "points_awarded": {
+                    "type": "integer"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "user_answer": {
+                    "type": "string"
+                }
+            }
+        },
         "login_dto.LoginRequestDTO": {
             "type": "object",
             "required": [

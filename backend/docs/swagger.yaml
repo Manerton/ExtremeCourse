@@ -1,5 +1,103 @@
 basePath: /
 definitions:
+  homework_dto.AddTaskToHomeworkDTO:
+    properties:
+      task_id:
+        type: string
+    type: object
+  homework_dto.CreateHomeworkRequestDTO:
+    properties:
+      deadline_at:
+        type: string
+      name:
+        type: string
+      publish_at:
+        type: string
+    type: object
+  homework_dto.CreateTaskRequestDTO:
+    properties:
+      answers:
+        items:
+          $ref: '#/definitions/homework_dto.TaskAnswerItemDTO'
+        type: array
+      description:
+        type: string
+      max_points:
+        type: integer
+      name:
+        type: string
+    type: object
+  homework_dto.HomeworkResponseDTO:
+    properties:
+      deadline_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      publish_at:
+        type: string
+      status:
+        type: integer
+    type: object
+  homework_dto.StudentHomeworkLeaderboardDTO:
+    properties:
+      total_score:
+        type: integer
+      user_fio:
+        type: string
+      user_id:
+        type: string
+    type: object
+  homework_dto.SubmissionResponseDTO:
+    properties:
+      homework_id:
+        type: string
+      id:
+        type: string
+      results:
+        items:
+          $ref: '#/definitions/homework_dto.TaskResultResponseDTO'
+        type: array
+      submitted_at:
+        type: string
+      total_score:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  homework_dto.SubmitAnswerItemDTO:
+    properties:
+      answer:
+        type: string
+      task_id:
+        type: string
+    type: object
+  homework_dto.SubmitHomeworkRequestDTO:
+    properties:
+      answers:
+        items:
+          $ref: '#/definitions/homework_dto.SubmitAnswerItemDTO'
+        type: array
+    type: object
+  homework_dto.TaskAnswerItemDTO:
+    properties:
+      answer:
+        type: string
+      correct:
+        type: boolean
+    type: object
+  homework_dto.TaskResultResponseDTO:
+    properties:
+      is_correct:
+        type: boolean
+      points_awarded:
+        type: integer
+      task_id:
+        type: string
+      user_answer:
+        type: string
+    type: object
   login_dto.LoginRequestDTO:
     properties:
       email:
@@ -311,6 +409,191 @@ paths:
       summary: AdminRegister
       tags:
       - auth
+  /api/homeworks:
+    get:
+      description: Получение списка всех опубликованных и активных домашних работ
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/homework_dto.HomeworkResponseDTO'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get available homeworks
+      tags:
+      - homeworks
+    post:
+      consumes:
+      - application/json
+      description: Создание новой домашней работы с указанием сроков публикации и
+        дедлайна
+      parameters:
+      - description: Данные для создания домашней работы
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/homework_dto.CreateHomeworkRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Create homework
+      tags:
+      - homeworks
+  /api/homeworks/{homework_id}/leaderboard:
+    get:
+      description: Получение рейтинга учеников по конкретной домашней работе
+      parameters:
+      - description: ID домашней работы (UUID)
+        in: path
+        name: homework_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/homework_dto.StudentHomeworkLeaderboardDTO'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get homework leaderboard
+      tags:
+      - homeworks
+  /api/homeworks/{homework_id}/submit:
+    post:
+      consumes:
+      - application/json
+      description: Сдача домашней работы пользователем с автоматической проверкой
+        ответов (повторная сдача запрещена)
+      parameters:
+      - description: ID домашней работы (UUID)
+        in: path
+        name: homework_id
+        required: true
+        type: string
+      - description: ID пользователя (UUID), если передается через заголовок
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Ответы пользователя на задачи
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/homework_dto.SubmitHomeworkRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/homework_dto.SubmissionResponseDTO'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Submit homework
+      tags:
+      - homeworks
+  /api/homeworks/{homework_id}/tasks:
+    post:
+      consumes:
+      - application/json
+      description: Прикрепление существующей задачи к домашней работе
+      parameters:
+      - description: ID домашней работы (UUID)
+        in: path
+        name: homework_id
+        required: true
+        type: string
+      - description: ID задачи для прикрепления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/homework_dto.AddTaskToHomeworkDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Add task to homework
+      tags:
+      - homeworks
   /api/participants:
     get:
       description: Получение всех участников с пагинацией
@@ -688,6 +971,45 @@ paths:
       summary: Get all schools by district
       tags:
       - schools
+  /api/tasks:
+    post:
+      consumes:
+      - application/json
+      description: Создание задачи с вариантами правильных ответов и баллами
+      parameters:
+      - description: Данные для создания задачи
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/homework_dto.CreateTaskRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Create task
+      tags:
+      - homeworks
   /api/users:
     get:
       description: Получение всех пользователей
