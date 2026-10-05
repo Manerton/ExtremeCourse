@@ -1,5 +1,6 @@
 import React from "react";
 import { Navbar, Nav, Dropdown, Container } from "react-bootstrap";
+// @deno-types="npm:@types/react-router-bootstrap"
 import { LinkContainer } from "react-router-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { PersonCircle, BoxArrowInRight } from "react-bootstrap-icons";
@@ -7,9 +8,9 @@ import ThemeToggleButton from "../../Helpers/ThemeToggleButton";
 import { useAuth } from "../../Helpers/AuthContext";
 
 import MainLogo from "/vsoshLogo.png";
-import MainLogo2 from "/vsoshLogoHor.png";
+import MainLogo2 from "../../../assets/images/v49_8.png";
 
-import logoVOSh from '../../../assets/images/v51_9.png';
+import logoVOSh from '../../../assets/images/v49_8.png';
 
 function Header() {
   const { user, logout, initialized } = useAuth();
@@ -43,9 +44,9 @@ function Header() {
             <LinkContainer to="/">
               <Nav.Link>Главная</Nav.Link>
             </LinkContainer>
-            <LinkContainer to="/RegionalStages">
-              <Nav.Link>Региональные этапы</Nav.Link>
-            </LinkContainer>
+            {/*<LinkContainer to="/RegionalStages">*/}
+            {/*  <Nav.Link>Смены</Nav.Link>*/}
+            {/*</LinkContainer>*/}
 
                         {user?.role === 1 && (
                             <LinkContainer to="/AdminPanel">

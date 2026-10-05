@@ -35,7 +35,8 @@ const ParticipantDashboard: React.FC = () => {
             if (!accessToken || !user) return;
 
             const apps = await axiosGetApplicationEvents(accessToken, user.id);
-            const ids = apps.map((a: any) => a.MainEvent.id);
+            //console.log(apps);
+            const ids = apps.map((a: any) => a.id);
             setAppliedEventIds(ids);
         };
 

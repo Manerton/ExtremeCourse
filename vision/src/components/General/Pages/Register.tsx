@@ -14,11 +14,12 @@ import { useAuth } from "../../Helpers/AuthContext";
 import { useNavigate } from "react-router-dom";
 import type { RegisterForm } from "../../types/user";
 import axios from "axios";
-import { axiosSendSMSCode } from "../../../requests/NotificationRequests";
+//import { axiosSendSMSCode } from "../../../requests/NotificationRequests";
 import {
     axiosSSOVerifySMSCode,
     axiosSSOVerifyEmail,
     axiosSSOVerifyPhoneNumber,
+    axiosSendSMSCode,
     axiosSSODistrict, axiosSSOSchool
 } from "../../../requests/SSORequests";
 
@@ -1029,7 +1030,7 @@ const RegisterPage: React.FC = () => {
         1: { title: "Шаг 1: Почта и пароль", text: ["Укажите актуальную электронную почту: она будет использована для связи с Вами. Укажите надежный пароль"], icon: <LockFill size={48} className="mb-3 text-white opacity-75" /> },
         2: {
             title: "Шаг 2: Расскажите о себе",
-            text: ["Пожалуйста, будьте предельно аккуратны при указании Ваших ФИО. В случае внесения ошибочных сведений Вы можете быть не допущены к участию в олимпиаде."],
+            text: ["Пожалуйста, будьте предельно аккуратны при указании Ваших ФИО. В случае внесения ошибочных сведений, ваши результаты могут быть утрачены."],
             icon: <PersonFill size={48} className="mb-3 text-white opacity-75" />
         },
         3: {
@@ -1051,11 +1052,11 @@ const RegisterPage: React.FC = () => {
                     Пожалуйста, выбирайте эту опцию в списке «Муниципальное образование/Учредитель».
                 </span>
             ],
-            icon: <BuildingFill size={48} className="mb-3 text-white opacity-75" />
+            icon: <BuildingFill size={48} className="mt-3 mb-3 text-white opacity-75" />
         },
         4: {
             title: "Шаг 4: Дополнительная информация",
-            text: ["необходима для корректного оформления документов и оказания помощи на олимпиаде."],
+            text: ["необходима для корректного оформления документов."],
             icon: <HeartFill size={48} className="mb-3 text-white opacity-75" />
         },
         5: {
@@ -1286,7 +1287,7 @@ const RegisterPage: React.FC = () => {
                             {line}
                         </p>
                     ))}
-                    <div className="mt-0">
+                    <div className="mt-0 mb-3">
                         <span className="badge bg-white text-primary fs-6 px-4 py-2 rounded-pill">
                             Шаг {step} из 6
                         </span>

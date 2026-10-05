@@ -1,5 +1,5 @@
 import axios from "axios";
-import { AUTH, LINKS, PARTICIPANT, SCHOOLS, USER } from "../config/api";
+import {AUTH, LINKS, NOTIFY, PARTICIPANT, SCHOOLS, USER} from "../config/api";
 import type { ChangePasswordForm, ForgotPasswordForm, RegisterForm, User, UserParticipant } from "../components/types/user";
 import type { School } from "../components/types/schools";
 
@@ -137,6 +137,15 @@ export async function axiosSSOForgotPassword(data: ForgotPasswordForm) {
         data
     );
     return res.status
+}
+
+export async function axiosSendSMSCode(phone: string) {
+    const res = await axios.post(
+        AUTH.sendCode,
+        { phone }
+    );
+
+    return res.data; // TODO!! УТОЧНИТЬ НУЖНО ЛИ DATA
 }
 
 export async function axiosSSOVerifySMSCode(phoneNumber: string, code: string) {

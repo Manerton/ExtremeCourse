@@ -26,19 +26,15 @@ const MainPage: React.FC = () => {
           <div
             className="d-flex flex-column justify-content-center align-items-center h-100 text-center p-3"
           >
-            <h1 className="display-4 fw-bold text-center">
-              Региональный этап всероссийской олимпиады школьников<br />
-              <span
-                style={{
-                  background: 'linear-gradient(to right, #1494D4, #70FF99)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  display: 'inline-block'
-                }}
-              >
-                на территории Астраханской области!
-              </span>
-            </h1>
+              <h1 className="display-4 fw-bold text-center">
+                  Профильные смены<br />
+                  <span>
+                    В{' '}
+                      <span className="rsht-letter letter-r">Р</span>
+                        <span className="rsht-letter letter-sh">Ш</span>
+                        <span className="rsht-letter letter-t">Т</span>
+                  </span>
+              </h1>
 
             {/* <p className="lead">
                     Упрощение процессов, помощь талантливым школьникам раскрыть свой потенциал.
@@ -220,8 +216,8 @@ const MainPage: React.FC = () => {
         ) : (
           <>
             <div className="text-center p-3 flex-fill border rounded">
-              <h4>Уважаемый участник регионального этапа всероссийской олимпиады школьников на территории Астраханской области!<br />
-                Чтобы подать заявку на участие в региональном этапе ВСОШ, пожалуйста, перейдите в Личный кабинеты</h4>
+              <h4>Уважаемый участник профильной смены!<br />
+                Чтобы подать заявку на участие, пожалуйста, перейдите в Личный кабинет</h4>
               <Button onClick={() => navigate("/PersonalAccount")} variant="primary" size="lg" className="me-2 m-2">
                 Перейти в личный кабинет
               </Button>
@@ -242,20 +238,20 @@ const MainPage: React.FC = () => {
               <Accordion.Body>Для получения доступа к личному кабинету создайте его пройдя регистрацию.</Accordion.Body>
             </Accordion.Item>
             <Accordion.Item eventKey="2">
-              <Accordion.Header>Когда будут проходить олимпиады?</Accordion.Header>
-              <Accordion.Body>Информация о датах проведения олимпиад будет опубликована на сайте в личных кабинетах участников.</Accordion.Body>
+              <Accordion.Header>Когда будут проходить профильные смены?</Accordion.Header>
+              <Accordion.Body>Информация о датах проведения профильных смен будет опубликована на сайте в личных кабинетах участников.</Accordion.Body>
             </Accordion.Item>
             <Accordion.Item eventKey="3">
-              <Accordion.Header>Можно ли участвовать в олимпиаде по нескольким предметам?</Accordion.Header>
-              <Accordion.Body>Да, участники могут подавать заявки на участие в олимпиадах по нескольким предметам.</Accordion.Body>
+              <Accordion.Header>Можно ли участвовать в профильных сменах по нескольким предметам?</Accordion.Header>
+              <Accordion.Body>Да, участники могут подавать заявки на участие в профильных сменах по нескольким предметам.</Accordion.Body>
             </Accordion.Item>
             {/* <Accordion.Item eventKey="4">
               <Accordion.Header>Что делать, если я забыл пароль?</Accordion.Header>
               <Accordion.Body>На странице входа нажмите «Забыли пароль?» и следуйте инструкциям для восстановления пароля.</Accordion.Body>
             </Accordion.Item> */}
             <Accordion.Item eventKey="5">
-              <Accordion.Header>Как подать заявку на участие в олимпиаде?</Accordion.Header>
-              <Accordion.Body>После регистрации и входа в личный кабинет выберите интересующую вас олимпиаду из списка доступных и нажмите кнопку "Подать заявку".</Accordion.Body>
+              <Accordion.Header>Как подать заявку на участие в профильной смене?</Accordion.Header>
+              <Accordion.Body>После регистрации и входа в личный кабинет выберите интересующую вас профильную смену из списка доступных и нажмите кнопку "Подать заявку".</Accordion.Body>
             </Accordion.Item>
             <Accordion.Item eventKey="6">
               <Accordion.Header>Что делать если я ошибся при указании ФИО или школы</Accordion.Header>

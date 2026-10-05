@@ -40,6 +40,14 @@ export interface ApplicationEvent {
     class_participation: number
 }
 
+export interface Event {
+    id: string
+    name: string
+    subject: string
+    class: number
+    status: number
+}
+
 export interface CreateEventDTORequest {
     name: string;
 

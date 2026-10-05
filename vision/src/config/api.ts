@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const API_CONFIG = {
-    REGISTEREVENTS: `${API_URL}/events-register`,
+    REGISTEREVENTS: `${API_URL}/events`,
     ALLEVENTS: `${API_URL}/events/`,
     EVENT: `${API_URL}/events/`,
     EXCELUPLOAD: `${API_URL}/upload-excel-event`,
@@ -26,6 +26,7 @@ export const AUTH = {
     refresh: `${API_URL}/users/refresh`,
     register: `${API_URL}/users/register`,
     forgotPassword: `${API_URL}/users/forgot-password`,
+    sendCode: `${API_URL}/users/send-call-code`,
     verifySMS: `${API_URL}/users/verify-code`,
     verifyEmail: `${API_URL}/users/check-email`,
     verifyPhone: `${API_URL}/users/check-phone`,
@@ -35,7 +36,7 @@ export const AUTH = {
 };
 
 export const SCHOOLS = {
-    all: `${API_URL}/schools/all`,
+    all: `${API_URL}/schools`,
     byId: `${API_URL}/schools/`,
 };
 
@@ -51,9 +52,9 @@ export const USER = {
 };
 
 export const APPLICATION = {
-    getByUser: `${API_URL}/ApplicationEvent/`,
+    getByUser: `${API_URL}/users/`,
     generateCode: `${API_URL}/applications/set-code/`,
-    create: `${API_URL}/applications/create/`,
+    create: `${API_URL}/events/`,
     getALL: `${API_URL}/applications/`,
     getByEvent: `${API_URL}/applications/event/`,
     update: `${API_URL}/applications/`,
@@ -74,7 +75,7 @@ export const APPEAL = {
 
 export const PARTICIPANT = {
     update: `${API_URL}/participants/`,
-    info: `${API_URL}/users/participant/all-info/`,
+    info: `${API_URL}/users/all-info/`,
 };
 
 export const HOSTS = {

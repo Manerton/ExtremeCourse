@@ -5,6 +5,8 @@
     "preview": "deno run --allow-all --node-modules-dir npm:vite preview"
   },
   "imports": {
+    "react-router-bootstrap": "npm:react-router-bootstrap@^0.26.3",
+    "@types/react-router-bootstrap": "npm:@types/react-router-bootstrap@^0.26.8",
     "@types/react-select": "npm:@types/react-select@^5.0.1",
     "date-fns": "npm:date-fns@^4.4.0",
     "react-select": "npm:react-select@^5.10.2",
@@ -28,7 +30,6 @@
     "@types/react-datepicker": "npm:@types/react-datepicker@^7.0.0",
     "react-bootstrap-icons": "npm:react-bootstrap-icons@^1.11.6",
     "@react-input/mask": "npm:@react-input/mask@^2.0.4",
-    "react-router-bootstrap": "npm:react-router-bootstrap@^0.26.3",
     "react-icons/fa": "npm:react-icons@^5.7.0"
   },
   "compilerOptions": {

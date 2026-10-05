@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Form, Spinner, Alert, Card } from "react-bootstrap";
+import { Table, Button, Spinner, Alert } from "react-bootstrap";
 import { useAuth } from "../../Helpers/AuthContext";
-import axios from "axios";
-import { MyEvent } from "../../types/event";
+import { Event } from "../../types/event";
 import { fetchSimpleOlympiads } from "../../../requests/EventsRequests";
-import { useParams } from "react-router-dom";
 import { axiosCreateApplication } from "../../../requests/ApplicationRequests";
 import { Application } from "../../types/application";
 
@@ -13,27 +11,24 @@ interface Props {
     user_school_id: string;
     reloadFlag: number;
     onApplied: () => void;
-
     appliedEventIds: string[];
 }
 
 const OlympiadsSimpleTable: React.FC<Props> = ({
-    user_class,
-    user_school_id,
-    onApplied,
-    reloadFlag,
-    appliedEventIds
-}) => {
+                                                   user_class,
+                                                   user_school_id,
+                                                   onApplied,
+                                                   reloadFlag,
+                                                   appliedEventIds
+                                               }) => {
     const { user, accessToken } = useAuth();
 
-    const [olympiads, setOlympiads] = useState<MyEvent[]>([]);
+    const [olympiads, setOlympiads] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [selectedClasses, setSelectedClasses] = useState<Record<string, number>>({});
-    const [selectedProfiles, setSelectedProfiles] = useState<Record<string, string>>({});
-
-    const visibleOlympiads = olympiads.filter(o => !appliedEventIds.includes(o.id!));
+    // Проверяем, есть ли уже хотя бы одна поданная заявка
+    const hasAppliedEvents = appliedEventIds.length > 0;
 
     useEffect(() => {
         if (!accessToken) return;
@@ -45,33 +40,18 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
             .finally(() => setLoading(false));
     }, [reloadFlag, accessToken]);
 
-    const handleClassChange = (eventId: string, value: number) => {
-        setSelectedClasses((prev) => ({ ...prev, [eventId]: value }));
-    };
-
-    const handleProfileChange = (eventId: string, value: string) => {
-        setSelectedProfiles((prev) => ({ ...prev, [eventId]: value }));
-    };
-
-    const handleSubmit = async (eventId: string) => {
-        const classNumber = selectedClasses[eventId];
-        if (!classNumber) {
-            alert("Выберите класс участия");
-            return;
-        }
+    const handleSubmit = async (event: Event) => {
+        if (hasAppliedEvents) return;
 
         try {
-
-
-            let application = {
+            const application = {
                 userId: user?.id.toString(),
-                eventId: eventId,
+                eventId: event.id,
                 schoolId: user_school_id,
-                class_participation: classNumber,
-                profile: selectedProfiles[eventId] ?? ""
-            } as Application
+                class_participation: event.class,
+            } as unknown as Application;
 
-            await axiosCreateApplication(accessToken!, application)
+            await axiosCreateApplication(accessToken!, application);
 
             alert("Заявка отправлена!");
             onApplied();
@@ -83,15 +63,23 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
     if (loading) return <Spinner />;
     if (error) return <Alert variant="danger">{error}</Alert>;
 
+    // Фильтруем события по классу (показываем только те, где класс события >= классу ученика)
+    //const availableOlympiads = olympiads.filter((olymp) => olymp.class >= user_class);
+    const availableOlympiads = olympiads
     return (
         <div className="table-responsive">
+            {hasAppliedEvents && (
+                <Alert variant="warning" className="mb-4">
+                    Вы уже подали заявку. Подача повторных заявок недоступна. Отзовите предыдущую заявку, чтобы подать новую.
+                </Alert>
+            )}
+
             <div className="d-flex align-items-start bg-light p-3 rounded-3 border mb-4">
                 <i className="bi bi-info-circle fs-3 me-3 text-primary"></i>
                 <div>
                     <h4 className="mb-1">Внимание</h4>
                     <p className="mb-0">
-                        Пожалуйста, выберите интересующую вас олимпиаду.
-                        Укажите класс участия и профиль (если он предусмотрен), а затем нажмите кнопку
+                        Пожалуйста, выберите интересующую вас программу и нажмите кнопку
                         <strong> «Подать заявку»</strong>.
                     </p>
                 </div>
@@ -99,77 +87,35 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
 
             <Table bordered hover className="align-middle text-center">
                 <thead>
-                    <tr>
-                        <th>Предмет</th>
-                        <th>Даты проведения</th>
-                        <th>Класс участия</th>
-                        <th>Профиль</th>
-                        <th></th>
-                    </tr>
+                <tr>
+                    <th>Программа</th>
+                    <th>Предмет</th>
+                    <th>Класс</th>
+                    <th>Действие</th>
+                </tr>
                 </thead>
 
                 <tbody>
-                    {visibleOlympiads.map((olymp) => {
-
-                        const fullDates = olymp.dates.join(", ");
-
-                        return (
-                            <tr key={olymp.id}>
-                                <td>{olymp.name}</td>
-
-                                <td>{fullDates}</td>
-
-                                <td>
-                                    {[9, 10, 11]
-                                        .filter((c) => c >= user_class)
-                                        .map((c) => (
-                                            <Form.Check
-                                                key={c}
-                                                inline
-                                                label={c.toString()}
-                                                type="radio"
-                                                name={`class-${olymp.id}`}
-                                                checked={selectedClasses[olymp.id!] === c}
-                                                onChange={() => handleClassChange(olymp.id!, c)}
-                                            />
-                                        ))}
-                                </td>
-
-                                <td>
-                                    {olymp.profiles && olymp.profiles.length > 0 ? (
-                                        <Form.Select
-                                            value={selectedProfiles[olymp.id!] ?? "none"}
-                                            onChange={(e) => handleProfileChange(olymp.id!, e.target.value)}
-                                        >
-                                            <option value="none">Выберите профиль</option>
-                                            {olymp.profiles.map((ev) => (
-                                                <option key={ev} value={ev}>
-                                                    {ev}
-                                                </option>
-                                            ))}
-                                        </Form.Select>
-                                    ) : (
-                                        "—"
-                                    )}
-                                </td>
-
-                                <td>
-                                    <Button
-                                        variant="primary"
-                                        className="w-100"
-                                        disabled={
-                                            !selectedClasses[olymp.id!] || // не выбран класс
-                                            (olymp.profiles?.length > 0 &&
-                                                (!selectedProfiles[olymp.id!] || selectedProfiles[olymp.id!] === "none")) // есть профили, но не выбран
-                                        }
-                                        onClick={() => handleSubmit(olymp.id!)}
-                                    >
-                                        Подать заявку
-                                    </Button>
-                                </td>
-                            </tr>
-                        );
-                    })}
+                {availableOlympiads.map((olymp) => (
+                    <tr
+                        key={olymp.id}
+                        style={{ opacity: hasAppliedEvents ? 0.65 : 1 }}
+                    >
+                        <td>{olymp.name}</td>
+                        <td>{olymp.subject}</td>
+                        <td>{olymp.class}</td>
+                        <td>
+                            <Button
+                                variant={hasAppliedEvents ? "secondary" : "primary"}
+                                className="w-100"
+                                disabled={hasAppliedEvents}
+                                onClick={() => handleSubmit(olymp)}
+                            >
+                                {hasAppliedEvents ? "Недоступно" : "Подать заявку"}
+                            </Button>
+                        </td>
+                    </tr>
+                ))}
                 </tbody>
             </Table>
         </div>
