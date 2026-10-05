@@ -63,9 +63,8 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
     if (loading) return <Spinner />;
     if (error) return <Alert variant="danger">{error}</Alert>;
 
-    // Фильтруем события по классу (показываем только те, где класс события >= классу ученика)
-    //const availableOlympiads = olympiads.filter((olymp) => olymp.class >= user_class);
-    const availableOlympiads = olympiads
+    // Исключаем события, идентификаторы которых есть в appliedEventIds
+    const availableOlympiads = olympiads.filter((olymp) => !appliedEventIds.includes(olymp.id));
     return (
         <div className="table-responsive">
             {hasAppliedEvents && (
@@ -96,26 +95,34 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                 </thead>
 
                 <tbody>
-                {availableOlympiads.map((olymp) => (
-                    <tr
-                        key={olymp.id}
-                        style={{ opacity: hasAppliedEvents ? 0.65 : 1 }}
-                    >
-                        <td>{olymp.name}</td>
-                        <td>{olymp.subject}</td>
-                        <td>{olymp.class}</td>
-                        <td>
-                            <Button
-                                variant={hasAppliedEvents ? "secondary" : "primary"}
-                                className="w-100"
-                                disabled={hasAppliedEvents}
-                                onClick={() => handleSubmit(olymp)}
-                            >
-                                {hasAppliedEvents ? "Недоступно" : "Подать заявку"}
-                            </Button>
+                {availableOlympiads.length === 0 ? (
+                    <tr>
+                        <td colSpan={4} className="text-muted py-3">
+                            Нет доступных программ для подачи заявки
                         </td>
                     </tr>
-                ))}
+                ) : (
+                    availableOlympiads.map((olymp) => (
+                        <tr
+                            key={olymp.id}
+                            style={{ opacity: hasAppliedEvents ? 0.65 : 1 }}
+                        >
+                            <td>{olymp.name}</td>
+                            <td>{olymp.subject}</td>
+                            <td>{olymp.class}</td>
+                            <td>
+                                <Button
+                                    variant={hasAppliedEvents ? "secondary" : "primary"}
+                                    className="w-100"
+                                    disabled={hasAppliedEvents}
+                                    onClick={() => handleSubmit(olymp)}
+                                >
+                                    {hasAppliedEvents ? "Недоступно" : "Подать заявку"}
+                                </Button>
+                            </td>
+                        </tr>
+                    ))
+                )}
                 </tbody>
             </Table>
         </div>

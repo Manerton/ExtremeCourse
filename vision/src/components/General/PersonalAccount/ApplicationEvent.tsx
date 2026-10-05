@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../Helpers/AuthContext";
-import { axiosGetApplicationEvents, axiosRevokeApplication } from "../../../requests/ApplicationRequests";
+import {
+    axiosGetApplicationEvents,
+    axiosRevokeApplication,
+    axiosCreateApplication
+} from "../../../requests/ApplicationRequests";
+import { Application } from "../../types/application";
 
-// Описываем плоский интерфейс заявки согласно ответу сервера
+// Статусы заявки
+const STATUS_SUBMITTED = 1; // Отправлена
+const STATUS_ACTIVE = 2;    // На рассмотрении / Активна
+const STATUS_APPROVED = 3;  // Одобрена
+const STATUS_REVOKED = 4;   // Отозвана / Отклонена
+
 export interface ApplicationItem {
     id: string;
     userId: string;
@@ -30,8 +40,6 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
     async function fetchApplicationEvents() {
         try {
             const response = await axiosGetApplicationEvents(accessToken!, user!.id);
-            // Если функция возвращает весь ответ сервера { data: [...] }, берем response.data,
-            // иначе (если response уже массив) берем сам response
             const items = Array.isArray(response) ? response : response.data;
             setEvents(items || []);
         } catch (err) {
@@ -47,19 +55,56 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
         fetchApplicationEvents();
     }, [accessToken, user?.id, reloadFlag]);
 
+    // Проверяем, есть ли сейчас активная не отозванная заявка
+    const hasActiveApplication = events.some(
+        (ev) => ev.status !== STATUS_REVOKED
+    );
+
+    // Отзыв заявки (статус меняется на бэкенде)
     async function handleRevoke(applicationId: string) {
         try {
+            console.log("Отзыв заявки:", accessToken);
+            console.log("Отзыв заявки айди:", applicationId);
             await axiosRevokeApplication(accessToken!, applicationId);
 
-            setEvents((prev) => prev.filter(ev => ev.id !== applicationId));
+            // Локально переводим статус в отозванный или перезапрашиваем данные
+            setEvents((prev) =>
+                prev.map((ev) =>
+                    ev.id === applicationId ? { ...ev, status: STATUS_REVOKED } : ev
+                )
+            );
 
             onApplied();
         } catch (err) {
             console.error("Ошибка отзыва заявки:", err);
+            alert("Ошибка при отзыве заявки");
         }
     }
 
-    // Форматирование даты подачи
+    // Повторная подача ранее отозванной заявки
+    async function handleReapply(item: ApplicationItem) {
+        if (hasActiveApplication) return;
+
+        try {
+            const application = {
+                userId: user?.id.toString(),
+                eventId: item.eventId,
+                schoolId: item.schoolId,
+                class_participation: item.class_participation,
+                profile: item.profile ?? ""
+            } as unknown as Application;
+
+            await axiosCreateApplication(accessToken!, application);
+
+            alert("Заявка повторно отправлена!");
+            await fetchApplicationEvents();
+            onApplied();
+        } catch (err) {
+            console.error("Ошибка при подаче заявки:", err);
+            alert("Ошибка при отправке заявки");
+        }
+    }
+
     const formatDate = (isoDate: string) => {
         if (!isoDate) return "—";
         return new Date(isoDate).toLocaleDateString("ru-RU", {
@@ -108,61 +153,89 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                     <th>Дата подачи</th>
                     <th>Класс участия</th>
                     <th>Статус</th>
-                    <th></th>
+                    <th style={{ width: "160px" }}>Действие</th>
                 </tr>
                 </thead>
                 <tbody>
-                {events.map((ev) => (
-                    <tr key={ev.id}>
-                        <td>{ev.name}</td>
-                        <td>{formatDate(ev.submittedAt)}</td>
-                        <td>{ev.class_participation}</td>
-                        <td>{getStatusText(ev.status)}</td>
-                        <td className="text-center">
-                            <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleRevoke(ev.id)}
-                            >
-                                Отозвать
-                            </button>
-                        </td>
-                    </tr>
-                ))}
+                {events.map((ev) => {
+                    const isRevoked = ev.status === STATUS_REVOKED;
+
+                    return (
+                        <tr key={ev.id} style={{ opacity: isRevoked ? 0.7 : 1 }}>
+                            <td>{ev.name}</td>
+                            <td>{formatDate(ev.submittedAt)}</td>
+                            <td>{ev.class_participation}</td>
+                            <td>{getStatusText(ev.status)}</td>
+                            <td className="text-center">
+                                {isRevoked ? (
+                                    <button
+                                        className="btn btn-sm btn-primary w-100"
+                                        disabled={hasActiveApplication}
+                                        onClick={() => handleReapply(ev)}
+                                    >
+                                        Подать
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="btn btn-sm btn-danger w-100"
+                                        onClick={() => handleRevoke(ev.id)}
+                                    >
+                                        Отозвать
+                                    </button>
+                                )}
+                            </td>
+                        </tr>
+                    );
+                })}
                 </tbody>
             </table>
 
             {/* Mobile View */}
             <div className="d-md-none">
-                {events.map((ev) => (
-                    <div key={ev.id} className="card mb-3 shadow-sm">
-                        <div className="card-body">
-                            <h5 className="card-title">{ev.name}</h5>
+                {events.map((ev) => {
+                    const isRevoked = ev.status === STATUS_REVOKED;
 
-                            <p className="mb-1">
-                                <strong>Дата подачи:</strong> {formatDate(ev.submittedAt)}
-                            </p>
+                    return (
+                        <div key={ev.id} className="card mb-3 shadow-sm" style={{ opacity: isRevoked ? 0.7 : 1 }}>
+                            <div className="card-body">
+                                <h5 className="card-title">{ev.name}</h5>
 
-                            <p className="mb-1">
-                                <strong>Профиль:</strong> {ev.profile ? ev.profile : "—"}
-                            </p>
+                                <p className="mb-1">
+                                    <strong>Дата подачи:</strong> {formatDate(ev.submittedAt)}
+                                </p>
 
-                            <p className="mb-1">
-                                <strong>Класс участия:</strong> {ev.class_participation}
-                            </p>
+                                <p className="mb-1">
+                                    <strong>Профиль:</strong> {ev.profile ? ev.profile : "—"}
+                                </p>
 
-                            <p className="mb-3">
-                                <strong>Статус:</strong> {getStatusText(ev.status)}
-                            </p>
+                                <p className="mb-1">
+                                    <strong>Класс участия:</strong> {ev.class_participation}
+                                </p>
 
-                            <button
-                                className="btn btn-danger w-100"
-                                onClick={() => handleRevoke(ev.id)}
-                            >
-                                Отозвать
-                            </button>
+                                <p className="mb-3">
+                                    <strong>Статус:</strong> {getStatusText(ev.status)}
+                                </p>
+
+                                {isRevoked ? (
+                                    <button
+                                        className="btn btn-primary w-100"
+                                        disabled={hasActiveApplication}
+                                        onClick={() => handleReapply(ev)}
+                                    >
+                                        Подать заявку
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="btn btn-danger w-100"
+                                        onClick={() => handleRevoke(ev.id)}
+                                    >
+                                        Отозвать
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
@@ -170,13 +243,10 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
 
 export default ApplicationEventPage;
 
-// Функция превращает статус в текст
 function getStatusText(status: number): string {
     switch (status) {
-        case 1: return "Отправлена";
-        case 2: return "На рассмотрении / Активна";
-        case 3: return "Одобрена";
-        case 4: return "Отклонена";
+        case 2: return "Одобрена";
+        case 3: return "Отозвана";
         default: return "Неизвестно";
     }
 }

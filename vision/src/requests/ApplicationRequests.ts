@@ -99,18 +99,19 @@ export async function axiosCreateApplication(token: string, application: Applica
 
     return res.data;
 }
-export async function axiosRevokeApplication(token: string, applicationId: string) 
-{
-    const res = await axios.delete(
-        APPLICATION.delete + `${applicationId}`, 
-        {
+
+export async function axiosRevokeApplication(token: string, applicationId: string) {
+    const res = await axios.post(
+        `${APPLICATION.delete}${applicationId}/cancel`, // добавляем /cancel в конец
+        {}, // 2-й аргумент: пустое тело (body)
+        {   // 3-й аргумент: конфигурация с заголовками
             headers: {
                 Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'  
+                'Content-Type': 'application/json'
             },
             withCredentials: true
         }
-    )
+    );
     return res.data;
 }
 
