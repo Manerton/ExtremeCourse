@@ -36,7 +36,7 @@ type ApplicationResponseDTO struct {
 	ID                 uuid.UUID `json:"id"`
 	UserID             uuid.UUID `json:"userId"`
 	SchoolID           uuid.UUID `json:"schoolId"`
-	EventName          string    `json:"event_name"`
+	EventName          string    `json:"name"`
 	EventID            uuid.UUID `json:"eventId"`
 	Profile            string    `json:"profile"`
 	ClassParticipation int       `json:"class_participation"`
