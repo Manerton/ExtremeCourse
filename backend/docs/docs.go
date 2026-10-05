@@ -390,12 +390,6 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "ID пользователя (UUID)",
-                        "name": "X-User-ID",
-                        "in": "header"
-                    },
-                    {
                         "description": "Данные заявки",
                         "name": "request",
                         "in": "body",
@@ -2772,10 +2766,7 @@ const docTemplate = `{
         "event_dto.ApplyEventRequestDTO": {
             "type": "object",
             "properties": {
-                "class_participation": {
-                    "type": "integer"
-                },
-                "school_id": {
+                "user_id": {
                     "type": "string"
                 }
             }

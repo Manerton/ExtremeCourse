@@ -18,9 +18,7 @@ definitions:
     type: object
   event_dto.ApplyEventRequestDTO:
     properties:
-      class_participation:
-        type: integer
-      school_id:
+      user_id:
         type: string
     type: object
   event_dto.CreateEventRequestDTO:
@@ -660,10 +658,6 @@ paths:
         in: path
         name: id
         required: true
-        type: string
-      - description: ID пользователя (UUID)
-        in: header
-        name: X-User-ID
         type: string
       - description: Данные заявки
         in: body
