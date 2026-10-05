@@ -39,7 +39,7 @@ REDIS_INFO:
 
 
 ADDITIONAL_ADDRESSES:
-  react: "http://172.16.1.39:5173"
+  react: "http://localhost:5173"
 
 ADDITIONAL_SERVICE_ADDRESSES:
   notification_path: "http://localhost:6611/email/send-code"

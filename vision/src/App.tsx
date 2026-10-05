@@ -69,8 +69,6 @@ import ApprovalApplicationsPageBySubject from './components/General/Pages/Approv
 
 function App() {
     return (
-
-        <NotificationProvider>
             <Router>
                 <div className="App">
                     <Routes>
@@ -202,7 +200,7 @@ function App() {
                     />
                 </div>
             </Router>
-        </NotificationProvider>
+
     );
 }
 export default App;

@@ -21,14 +21,14 @@ export const API_CONFIG = {
 };
 
 export const AUTH = {
-    login: `${API_URL}/auth`,
-    logout: `${API_URL}/logout`,
-    refresh: `${API_URL}/refresh`,
-    register: `${API_URL}/register`,
-    forgotPassword: `${API_URL}/users/forgot-password/`,
-    verifySMS: `${API_URL}/sms/verify-code/`,
-    verifyEmail: `${API_URL}/auth/check-email/`,
-    verifyPhone: `${API_URL}/auth/check-phone/`,
+    login: `${API_URL}/users/login`,
+    logout: `${API_URL}/users/logout`,
+    refresh: `${API_URL}/users/refresh`,
+    register: `${API_URL}/users/register`,
+    forgotPassword: `${API_URL}/users/forgot-password`,
+    verifySMS: `${API_URL}/users/verify-code`,
+    verifyEmail: `${API_URL}/users/check-email`,
+    verifyPhone: `${API_URL}/users/check-phone`,
     district: `${API_URL}/districts/`,
     school: `${API_URL}/schools/district/`,
     verifySchool: `${API_URL}/Verify-Applications/`,
