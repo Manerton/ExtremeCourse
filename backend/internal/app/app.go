@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	zvonok_client "main/internal/clients/zvonok"
 	"main/internal/config"
+	"main/internal/handlers/application_handler"
 	"main/internal/handlers/auth_handler"
 	"main/internal/handlers/district_handler"
+	"main/internal/handlers/event_handler"
 	"main/internal/handlers/link_handler"
 	"main/internal/handlers/participant_handler"
 	"main/internal/handlers/school_handler"
@@ -17,13 +19,17 @@ import (
 	"main/internal/lib/liblogger"
 	"main/internal/middleware/base_access"
 	"main/internal/middleware/midlogger"
+	"main/internal/repositories/application_repository"
 	"main/internal/repositories/district_repository"
+	"main/internal/repositories/event_repository"
 	"main/internal/repositories/participant_repository"
 	"main/internal/repositories/refresh_repository"
 	"main/internal/repositories/school_repository"
 	"main/internal/repositories/user_repository"
+	"main/internal/services/application_service"
 	"main/internal/services/auth_service"
 	"main/internal/services/district_service"
+	"main/internal/services/event_service"
 	"main/internal/services/links_service"
 	"main/internal/services/participant_service"
 	"main/internal/services/school_service"
@@ -81,6 +87,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	schoolRepository := &school_repository.SchoolRepository{}
 	refreshRepository := &refresh_repository.RefreshRepository{}
 	districtRepository := &district_repository.DistrictRepository{}
+	eventReposotory := &event_repository.EventRepository{}
+	applicationRepository := &application_repository.ApplicationRepository{}
 
 	// init notify client
 	zvonokClient := zvonok_client.NewZvonokClient(cfg.ZvonokConfig)
@@ -92,6 +100,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	participantService := participant_service.New(log, gormORM, participantRepository)
 	districtService := district_service.New(log, gormORM, districtRepository)
 	linkService := links_service.New(log, gormORM, cfg.Prefix, jwtManager, schoolRepository, districtRepository)
+	eventService := event_service.New(log, gormORM, eventReposotory, applicationRepository, participantRepository)
+	applicationService := application_service.NewApplicationService(log, gormORM, applicationRepository, userRepository, schoolRepository, eventReposotory)
 
 	// init handlers
 	userHandler := user_handler.New(userService)
@@ -100,6 +110,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	schoolHandler := school_handler.New(schoolService)
 	districtHandler := district_handler.New(districtService)
 	linkHandler := link_handler.New(linkService)
+	eventHandler := event_handler.New(eventService)
+	applicationHandler := application_handler.NewApplicationHandler(applicationService, log)
 
 	// init router
 	router := chi.NewRouter()
@@ -117,7 +129,10 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		schoolHandler,
 		participantHandler,
 		districtHandler,
-		linkHandler)
+		linkHandler,
+		applicationHandler,
+		eventHandler,
+	)
 
 	// init server
 	app.server = &http.Server{
@@ -135,7 +150,9 @@ func (a *App) initRoutes(router *chi.Mux,
 	schoolHandler *school_handler.SchoolHandler,
 	participantHandler *participant_handler.ParticipantHandler,
 	districtHandler *district_handler.DistrictHandler,
-	linkHandler *link_handler.LinkHandler) {
+	linkHandler *link_handler.LinkHandler,
+	applicationHandler *application_handler.ApplicationHandler,
+	eventHandler *event_handler.EventHandler) {
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
 
@@ -206,6 +223,19 @@ func (a *App) initRoutes(router *chi.Mux,
 
 		// DELETE
 		r.Delete("/api/users/{id}", userHandler.Delete)
+	})
+
+	router.With(base_access.BaseAccess(jwtManager)).Group(func(r chi.Router) {
+		// Получение полной таблицы заявок и модерация
+		r.Get("/api/applications/full-details", applicationHandler.GetAllFullApplications)
+		r.Patch("/api/applications/{id}/review", applicationHandler.ReviewApplication)
+
+		r.Route("/api/events", func(events chi.Router) {
+			events.Get("/", eventHandler.GetAllOpen)
+			events.Post("/", eventHandler.CreateEvent)
+			events.Patch("/{id}/status", eventHandler.UpdateStatus)
+			events.Post("/{id}/apply", eventHandler.ApplyToEvent)
+		})
 	})
 }
 

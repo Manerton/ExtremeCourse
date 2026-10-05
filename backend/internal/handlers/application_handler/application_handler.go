@@ -1,8 +1,9 @@
-package ApplicationHandler
+package application_handler
 
 import (
 	"fmt"
 	ApplicationDto "main/internal/dto/applications"
+	"main/internal/lib/errs"
 	"main/internal/lib/parser"
 	"main/internal/lib/response"
 	"main/internal/services/application_service"
@@ -23,6 +24,80 @@ type ApplicationHandler struct {
 // Конструктор обработчика заявок
 func NewApplicationHandler(service *application_service.ApplicationService, logger *slog.Logger) *ApplicationHandler {
 	return &ApplicationHandler{service: service, logger: logger}
+}
+
+// @Summary Get all full applications
+// @Security BearerAuth
+// @Description Получение полного списка заявок с данными о пользователях, их школах и событиях
+// @Tags applications
+// @Produce json
+// @Param page query int false "Номер страницы"
+// @Param limit query int false "Элементов на странице"
+// @Success 200 {object} response.ApiResponse
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/applications/full-details [get]
+func (h *ApplicationHandler) GetAllFullApplications(w http.ResponseWriter, r *http.Request) {
+	page, limit, err := parser.ParsePageLimit(r.URL.Query().Get("page"), r.URL.Query().Get("limit"))
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("invalid page or limit")))
+		return
+	}
+
+	items, err := h.service.GetAllFullApplications(r.Context(), page, limit)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       items,
+	})
+}
+
+// @Summary Review application (approve or reject)
+// @Security BearerAuth
+// @Description Одобрение (2) или отклонение (3) заявки модератором
+// @Tags applications
+// @Accept json
+// @Produce json
+// @Param id path string true "ID заявки"
+// @Param request body ApplicationDto.UpdateApplicationDTO true "Новый статус (2 - одобрено, 3 - отклонено)"
+// @Success 200 {object} response.ApiResponse
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/applications/{id}/review [patch]
+func (h *ApplicationHandler) ReviewApplication(w http.ResponseWriter, r *http.Request) {
+	appID := chi.URLParam(r, "id")
+
+	var dto ApplicationDto.UpdateApplicationDTO
+	if err := render.DecodeJSON(r.Body, &dto); err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("failed decode json body")))
+		return
+	}
+
+	if err := h.service.ReviewApplication(r.Context(), appID, dto.Status); err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.SuccessResponse("status updated"))
 }
 
 func (h *ApplicationHandler) GetCountApplications(w http.ResponseWriter, r *http.Request) {

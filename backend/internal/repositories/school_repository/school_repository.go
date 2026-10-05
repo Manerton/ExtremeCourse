@@ -23,6 +23,20 @@ func (r *SchoolRepository) GetCount(ctx context.Context, orm orm.ORM) (int64, er
 	return countResult, nil
 }
 
+func (r *SchoolRepository) GetByListId(ctx context.Context, orm orm.ORM, ids []uuid.UUID) ([]school.School, error) {
+	const op = "repositories.SchoolRepository.GetByListId"
+	if len(ids) == 0 {
+		return []school.School{}, nil
+	}
+
+	var schools []school.School
+	err := orm.Find(ctx, school.School{}, nil, nil, nil, nil, nil, &schools, "id IN ?", ids)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return schools, nil
+}
+
 func (r *SchoolRepository) GetById(ctx context.Context, orm orm.ORM, id uuid.UUID) (school.School, error) {
 	const op = "repositories.SchoolRepository.GetById"
 

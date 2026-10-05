@@ -3,9 +3,16 @@ package application_service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	ApplicationDto "main/internal/dto/applications"
+	"main/internal/lib/errs"
+	"main/internal/lib/liblogger"
 	models "main/internal/models/applications"
+	"main/internal/models/event"
+	"main/internal/models/school"
+	"main/internal/models/user"
 	"main/internal/storage/orm"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -26,15 +33,38 @@ type ApplicationRepository interface {
 	GetCount(ctx context.Context, orm orm.ORM) (int64, error)
 }
 
-type ApplicationService struct {
-	db         orm.ORM
-	repository ApplicationRepository
+type UserRepository interface {
+	GetByListId(ctx context.Context, orm orm.ORM, ids []uuid.UUID) ([]user.User, error)
 }
 
-func NewApplicationService(db orm.ORM, repo ApplicationRepository) *ApplicationService {
+type SchoolRepository interface {
+	GetByListId(ctx context.Context, orm orm.ORM, ids []uuid.UUID) ([]school.School, error)
+}
+
+type EventRepository interface {
+	GetByListId(ctx context.Context, o orm.ORM, ids []uuid.UUID) ([]event.Event, error)
+}
+
+type ApplicationService struct {
+	db         orm.ORM
+	log        *slog.Logger
+	repository ApplicationRepository
+	userRepo   UserRepository
+	schoolRepo SchoolRepository
+	eventRepo  EventRepository
+}
+
+func NewApplicationService(log *slog.Logger, db orm.ORM, repo ApplicationRepository,
+	userRepo UserRepository,
+	schoolRepo SchoolRepository,
+	eventRepo EventRepository) *ApplicationService {
 	return &ApplicationService{
 		db:         db,
+		log:        log,
 		repository: repo,
+		userRepo:   userRepo,
+		schoolRepo: schoolRepo,
+		eventRepo:  eventRepo,
 	}
 }
 
@@ -281,6 +311,152 @@ func (s *ApplicationService) DeleteByFilter(ctx context.Context, deleteDTO Appli
 	model := ConvertDeleteDTOtoApplication(deleteDTO)
 	if err := s.repository.DeleteByFilter(ctx, s.db, model); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, limit *int) ([]ApplicationDto.FullApplicationDetailsDTO, error) {
+	const op = "services.FullApplicationService.GetAllFullApplications"
+	log := s.log.With(slog.String("op", op))
+
+	offset := new(int)
+	if page != nil && limit != nil {
+		*offset = (*page - 1) * (*limit)
+	}
+
+	apps, err := s.repository.GetAllApplications(ctx, s.db, offset, limit)
+	if err != nil {
+		log.Error("failed get applications", liblogger.Err(err))
+		return nil, errs.ErrInternalError.Wrap("failed get applications")
+	}
+
+	if len(apps) == 0 {
+		return []ApplicationDto.FullApplicationDetailsDTO{}, nil
+	}
+
+	userMapIDs := make(map[uuid.UUID]bool)
+	schoolMapIDs := make(map[uuid.UUID]bool)
+	eventMapIDs := make(map[uuid.UUID]bool)
+
+	for _, app := range apps {
+		userMapIDs[app.UserID] = true
+		schoolMapIDs[app.SchoolID] = true
+		eventMapIDs[app.EventID] = true
+	}
+
+	userIDs := make([]uuid.UUID, 0, len(userMapIDs))
+	for id := range userMapIDs {
+		userIDs = append(userIDs, id)
+	}
+	schoolIDs := make([]uuid.UUID, 0, len(schoolMapIDs))
+	for id := range schoolMapIDs {
+		schoolIDs = append(schoolIDs, id)
+	}
+	eventIDs := make([]uuid.UUID, 0, len(eventMapIDs))
+	for id := range eventMapIDs {
+		eventIDs = append(eventIDs, id)
+	}
+
+	users, err := s.userRepo.GetByListId(ctx, s.db, userIDs)
+	if err != nil {
+		log.Error("failed get users", liblogger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+	userMap := make(map[uuid.UUID]user.User, len(users))
+	for _, u := range users {
+		userMap[u.ID] = u
+	}
+
+	schools, err := s.schoolRepo.GetByListId(ctx, s.db, schoolIDs)
+	if err != nil {
+		log.Error("failed get schools", liblogger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+	schoolMap := make(map[uuid.UUID]school.School, len(schools))
+	for _, sc := range schools {
+		schoolMap[sc.ID] = sc
+	}
+
+	events, err := s.eventRepo.GetByListId(ctx, s.db, eventIDs)
+	if err != nil {
+		log.Error("failed get events", liblogger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+	eventMap := make(map[uuid.UUID]event.Event, len(events))
+	for _, ev := range events {
+		eventMap[ev.ID] = ev
+	}
+
+	res := make([]ApplicationDto.FullApplicationDetailsDTO, 0, len(apps))
+	for _, app := range apps {
+		u := userMap[app.UserID]
+		sc := schoolMap[app.SchoolID]
+		ev := eventMap[app.EventID]
+
+		fullName := strings.TrimSpace(u.Surname + " " + u.Firstname + " " + u.Patronymic)
+		if fullName == "" {
+			fullName = u.Email
+		}
+
+		res = append(res, ApplicationDto.FullApplicationDetailsDTO{
+			ID:                 app.ID.String(),
+			Status:             app.Status,
+			ClassParticipation: app.ClassParticipation,
+			SubmittedAt:        app.SubmittedAt,
+			UpdatedAt:          app.UpdatedAt,
+			User: ApplicationDto.UserDetailsDTO{
+				ID:          u.ID.String(),
+				Email:       u.Email,
+				FullName:    fullName,
+				PhoneNumber: u.PhoneNumber,
+				BirthDate:   u.BirthDate,
+			},
+			School: ApplicationDto.SchoolDetailsDTO{
+				ID:         sc.ID.String(),
+				FullName:   sc.FullName,
+				Name:       sc.Name,
+				DistrictID: sc.DistrictID.String(),
+			},
+			Event: ApplicationDto.EventDetailsDTO{
+				ID:      ev.ID.String(),
+				Name:    ev.Name,
+				Subject: ev.Subject,
+				Class:   ev.Class,
+				Status:  ev.Status,
+			},
+		})
+	}
+
+	return res, nil
+}
+
+func (s *ApplicationService) ReviewApplication(ctx context.Context, appIDStr string, status int) error {
+	const op = "services.FullApplicationService.ReviewApplication"
+	log := s.log.With(slog.String("op", op))
+
+	appID, err := uuid.Parse(appIDStr)
+	if err != nil {
+		return errs.ErrBadRequest.Wrap("invalid application id")
+	}
+
+	if status != models.ApprovedStatus && status != models.RejectedStatus {
+		return errs.ErrBadRequest.Wrap("status must be 2 (approved) or 3 (rejected)")
+	}
+
+	app, err := s.repository.GetByID(ctx, s.db, appID)
+	if err != nil {
+		if s.db.IsNotFound(err) {
+			return errs.ErrBadRequest.Wrap("application not found")
+		}
+		log.Error("failed get application", liblogger.Err(err))
+		return errs.ErrInternalError
+	}
+
+	app.Status = status
+	if err := s.repository.UpdateApplication(ctx, s.db, app); err != nil {
+		log.Error("failed update application status", liblogger.Err(err))
+		return errs.ErrInternalError.Wrap("failed review application")
 	}
 
 	return nil

@@ -1,5 +1,62 @@
 basePath: /
 definitions:
+  ApplicationDto.UpdateApplicationDTO:
+    properties:
+      class_participation:
+        type: integer
+      code:
+        description: "09_11_25"
+        type: string
+      profile:
+        type: string
+      reason:
+        description: 1 по результатам предудущего года, 2 по результатам текущего
+        type: integer
+      status:
+        description: // 2 = одобрено, 3 = отклонено, 1 = не обработано
+        type: integer
+    type: object
+  event_dto.ApplyEventRequestDTO:
+    properties:
+      class_participation:
+        type: integer
+      school_id:
+        type: string
+    type: object
+  event_dto.CreateEventRequestDTO:
+    properties:
+      class:
+        type: integer
+      name:
+        type: string
+      subject:
+        type: string
+    type: object
+  event_dto.EventResponseDTO:
+    properties:
+      class:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      status:
+        type: integer
+      subject:
+        type: string
+    type: object
+  event_dto.ReviewApplicationRequestDTO:
+    properties:
+      status:
+        description: 2 = ApprovedStatus, 3 = RejectedStatus
+        type: integer
+    type: object
+  event_dto.UpdateEventStatusRequestDTO:
+    properties:
+      status:
+        description: 1 = Closed, 2 = Open
+        type: integer
+    type: object
   homework_dto.AddTaskToHomeworkDTO:
     properties:
       task_id:
@@ -377,6 +434,113 @@ info:
   title: Backend
   version: "1.0"
 paths:
+  /api/applications/{application_id}/review:
+    patch:
+      consumes:
+      - application/json
+      description: Модерация заявки (одобрение = 2 или отклонение = 3)
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: string
+      - description: Решение по заявке
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/event_dto.ReviewApplicationRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Review application (approve/reject)
+      tags:
+      - events
+  /api/applications/{id}/review:
+    patch:
+      consumes:
+      - application/json
+      description: Одобрение (2) или отклонение (3) заявки модератором
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Новый статус (2 - одобрено, 3 - отклонено)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ApplicationDto.UpdateApplicationDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Review application (approve or reject)
+      tags:
+      - applications
+  /api/applications/full-details:
+    get:
+      description: Получение полного списка заявок с данными о пользователях, их школах
+        и событиях
+      parameters:
+      - description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      - description: Элементов на странице
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all full applications
+      tags:
+      - applications
   /api/byadmin/register:
     post:
       consumes:
@@ -409,6 +573,168 @@ paths:
       summary: AdminRegister
       tags:
       - auth
+  /api/events:
+    get:
+      description: Получение всех открытых для участия событий с пагинацией
+      parameters:
+      - description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      - description: Количество на странице
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/event_dto.EventResponseDTO'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get open events
+      tags:
+      - events
+    post:
+      consumes:
+      - application/json
+      description: Создание нового события/олимпиады (только для администраторов/организаторов)
+      parameters:
+      - description: Данные события
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/event_dto.CreateEventRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Create event
+      tags:
+      - events
+  /api/events/{id}/apply:
+    post:
+      consumes:
+      - application/json
+      description: Подача заявки пользователем на участие в открытом событии
+      parameters:
+      - description: ID события
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID пользователя (UUID)
+        in: header
+        name: X-User-ID
+        type: string
+      - description: Данные заявки
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/event_dto.ApplyEventRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Apply to event
+      tags:
+      - events
+  /api/events/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Изменение статуса события (открыть/закрыть регистрацию)
+      parameters:
+      - description: ID события
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Новый статус (1 = Closed, 2 = Open)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/event_dto.UpdateEventStatusRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Update event status
+      tags:
+      - events
   /api/homeworks:
     get:
       description: Получение списка всех опубликованных и активных домашних работ

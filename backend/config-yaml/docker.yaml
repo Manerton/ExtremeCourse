@@ -16,7 +16,7 @@ HTTP_SERVER_INFO:
 
 JWT_INFO:
   key: "lololololololololololololololololololololololololololololol"
-  access_duration: 15 
+  access_duration: 60 
   refresh_duration: 7
 
 ZVONOK_INFO: 
