@@ -18,7 +18,7 @@ type Application struct {
 	SchoolID           uuid.UUID `gorm:"not null"`
 	EventID            uuid.UUID `gorm:"not null"`
 	ClassParticipation int       `gorm:"type:int"`
-	Status             int       `gorm:"default:1"` // 2 = одобрено, 3 = отклонено, 1 = не обработано
+	Status             int       `gorm:"default:1"` // 2 = одобрено, 3 = Отменено, 1 = не обработано
 	SubmittedAt        time.Time `gorm:"autoCreateTime"`
 	UpdatedAt          time.Time `gorm:"autoUpdateTime"`
 }

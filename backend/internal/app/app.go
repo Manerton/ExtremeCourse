@@ -229,12 +229,15 @@ func (a *App) initRoutes(router *chi.Mux,
 		// Получение полной таблицы заявок и модерация
 		r.Get("/api/applications/full-details", applicationHandler.GetAllFullApplications)
 		r.Patch("/api/applications/{id}/review", applicationHandler.ReviewApplication)
+		r.Get("/api/users/{userID}/applications", applicationHandler.GetApplicationsByUserID)
+		r.Post("/api/applications/{applicationID}/cancel", applicationHandler.CancelApplication)
 
 		r.Route("/api/events", func(events chi.Router) {
 			events.Get("/", eventHandler.GetAllOpen)
 			events.Post("/", eventHandler.CreateEvent)
 			events.Patch("/{id}/status", eventHandler.UpdateStatus)
 			events.Post("/{id}/apply", eventHandler.ApplyToEvent)
+
 		})
 	})
 }

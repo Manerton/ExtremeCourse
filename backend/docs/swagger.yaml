@@ -170,6 +170,26 @@ definitions:
       expires_in:
         type: integer
     type: object
+  models.Application:
+    properties:
+      classParticipation:
+        type: integer
+      eventID:
+        type: string
+      id:
+        type: string
+      schoolID:
+        type: string
+      status:
+        description: 2 = одобрено, 3 = Отменено, 1 = не обработано
+        type: integer
+      submittedAt:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+    type: object
   participant_dto.ParticipantResponseDTO:
     properties:
       citizenship:
@@ -469,6 +489,38 @@ paths:
       summary: Review application (approve/reject)
       tags:
       - events
+  /api/applications/{applicationID}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Отзывает ранее поданную заявку (доступно до 12.10.2026 включительно)
+      parameters:
+      - description: UUID заявки
+        format: uuid
+        in: path
+        name: applicationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Заявка успешно отменена
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Некорректный ID заявки или дедлайн истек
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Отмена заявки
+      tags:
+      - applications
   /api/applications/{id}/review:
     patch:
       consumes:
@@ -1467,6 +1519,45 @@ paths:
       summary: Update user
       tags:
       - users
+  /api/users/{userID}/applications:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех поданных заявок пользователя по его UUID
+      parameters:
+      - description: UUID пользователя
+        format: uuid
+        in: path
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список заявок
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Application'
+                  type: array
+              type: object
+        "400":
+          description: Неверные параметры пагинации или UUID
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Ошибка получения данных
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Получение заявок пользователя
+      tags:
+      - applications
   /api/users/all-info:
     get:
       description: Получение всей информации обо всех пользователях-учениках

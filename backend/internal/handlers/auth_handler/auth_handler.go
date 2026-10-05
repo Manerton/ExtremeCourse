@@ -106,7 +106,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Secure:   false,
 		// Domain:   "172.16.1.39",
 		SameSite: http.SameSiteLaxMode,
-		Path:     "/",
+		Path:     "/api/users",
 		Expires:  time.Now().Add(time.Duration(authResult.ExpiresInRefresh) * time.Second), // Match the token expiration
 	})
 
@@ -405,8 +405,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		Secure:   false,
 		// Domain:   "172.16.1.39",
 		SameSite: http.SameSiteLaxMode,
-		// Path:     "api/users/refresh",
-		Expires: time.Now().Add(time.Duration(loginDTO.ExpiresInRefresh) * time.Second), // Match the token expiration
+		Path:     "/api/users",
+		Expires:  time.Now().Add(time.Duration(loginDTO.ExpiresInRefresh) * time.Second), // Match the token expiration
 	})
 
 	render.Status(r, http.StatusOK)

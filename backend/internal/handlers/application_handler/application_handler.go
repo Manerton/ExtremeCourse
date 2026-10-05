@@ -1,6 +1,7 @@
 package application_handler
 
 import (
+	"errors"
 	"fmt"
 	ApplicationDto "main/internal/dto/applications"
 	"main/internal/lib/errs"
@@ -8,6 +9,7 @@ import (
 	"main/internal/lib/response"
 	"main/internal/services/application_service"
 	"net/http"
+	"strings"
 
 	"log/slog"
 
@@ -192,12 +194,6 @@ func (h *ApplicationHandler) GetAllApplications(w http.ResponseWriter, r *http.R
 func (h *ApplicationHandler) GetApplicationByID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idStr := chi.URLParam(r, "id")
-	// id, err := uuid.Parse(idStr)
-	// if err != nil {
-	// 	h.logger.Error("Некорректный UUID заявки", slog.Any("error", err))
-	// 	http.Error(w, "Некорректный UUID заявки", http.StatusBadRequest)
-	// 	return
-	// }
 
 	h.logger.Info("Получение заявки по ID", slog.Any("id", idStr))
 	application, err := h.service.GetApplicationByID(ctx, idStr)
@@ -206,7 +202,6 @@ func (h *ApplicationHandler) GetApplicationByID(w http.ResponseWriter, r *http.R
 		http.Error(w, "Заявка не найдена", http.StatusNotFound)
 		return
 	}
-	//render.JSON(w, r, application)
 	render.JSON(w, r, response.ApiResponse{
 		Status:     response.SUCCESS,
 		StatusCode: http.StatusOK,
@@ -214,29 +209,24 @@ func (h *ApplicationHandler) GetApplicationByID(w http.ResponseWriter, r *http.R
 	})
 }
 
-// Получение заявок пользователя по ID
+// GetApplicationsByUserID получает список заявок конкретного пользователя с пагинацией
+// @Summary      Получение заявок пользователя
+// @Security BearerAuth
+// @Description  Возвращает список всех поданных заявок пользователя по его UUID
+// @Tags         applications
+// @Accept       json
+// @Produce      json
+// @Param        userID   path      string  true   "UUID пользователя" Format(uuid)
+// @Success      200      {object}  response.ApiResponse{data=[]models.Application} "Список заявок"
+// @Failure      400      {object}  response.ApiResponse "Неверные параметры пагинации или UUID"
+// @Failure      500      {object}  response.ApiResponse "Ошибка получения данных"
+// @Router       /api/users/{userID}/applications [get]
 func (h *ApplicationHandler) GetApplicationsByUserID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idStr := chi.URLParam(r, "userID")
-	// userID, err := uuid.Parse(idStr)
-	// if err != nil {
-	// 	h.logger.Error("Некорректный userID", slog.Any("error", err))
-	// 	http.Error(w, "Некорректный userID", http.StatusBadRequest)
-	// 	return
-	// }
-
-	pageStr := r.URL.Query().Get("page")
-	limitStr := r.URL.Query().Get("limit")
-
-	page, limit, err := parser.ParsePageLimit(pageStr, limitStr)
-	if err != nil {
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, response.ErrorResponse("failed parse page/limit"))
-		return
-	}
 
 	h.logger.Info("Получение заявок пользователя", slog.Any("userID", idStr))
-	applications, err := h.service.GetApplicationsByUserID(ctx, idStr, page, limit)
+	applications, err := h.service.GetApplicationsByUserID(ctx, idStr)
 	if err != nil {
 		h.logger.Error("Ошибка получения заявок пользователя", slog.Any("error", err))
 		http.Error(w, "Не удалось получить заявки", http.StatusInternalServerError)
@@ -250,16 +240,58 @@ func (h *ApplicationHandler) GetApplicationsByUserID(w http.ResponseWriter, r *h
 	})
 }
 
+// CancelApplication отменяет заявку пользователя
+// @Summary      Отмена заявки
+// @Security BearerAuth
+// @Description  Отзывает ранее поданную заявку (доступно до 12.10.2026 включительно)
+// @Tags         applications
+// @Accept       json
+// @Produce      json
+// @Param        applicationID   path      string  true  "UUID заявки"  Format(uuid)
+// @Success      200             {object}  response.ApiResponse  "Заявка успешно отменена"
+// @Failure      400             {object}  response.ApiResponse  "Некорректный ID заявки или дедлайн истек"
+// @Failure      500             {object}  response.ApiResponse  "Внутренняя ошибка сервера"
+// @Router       /api/applications/{applicationID}/cancel [post]
+func (h *ApplicationHandler) CancelApplication(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	appIDStr := chi.URLParam(r, "applicationID")
+
+	if appIDStr == "" {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorResponse("missing application ID"))
+		return
+	}
+
+	h.logger.Info("Отмена заявки", slog.String("applicationID", appIDStr))
+
+	err := h.service.CancelApplication(ctx, appIDStr)
+	if err != nil {
+		h.logger.Error("Ошибка при отмене заявки", slog.String("applicationID", appIDStr), slog.Any("error", err))
+
+		// Если ошибка связана с некорректным ID или дедлайном
+		if errors.Is(err, errs.ErrBadRequest) || strings.Contains(err.Error(), "deadline") {
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, response.ErrorResponse(err.Error()))
+			return
+		}
+
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorResponse("failed to cancel application"))
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       "application cancelled successfully",
+	})
+}
+
 // Получение заявок по ID события
 func (h *ApplicationHandler) GetApplicationsByEventID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idStr := chi.URLParam(r, "eventID")
-	// eventID, err := uuid.Parse(idStr)
-	// if err != nil {
-	// 	h.logger.Error("Некорректный eventID", slog.Any("error", err))
-	// 	http.Error(w, "Некорректный eventID", http.StatusBadRequest)
-	// 	return
-	// }
 
 	pageStr := r.URL.Query().Get("page")
 	limitStr := r.URL.Query().Get("limit")
@@ -388,12 +420,6 @@ func (h *ApplicationHandler) SetParticipantCode(w http.ResponseWriter, r *http.R
 func (h *ApplicationHandler) UpdateApplicationStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idStr := chi.URLParam(r, "id")
-	// id, err := uuid.Parse(idStr)
-	// if err != nil {
-	// 	h.logger.Error("Некорректный UUID заявки", slog.Any("error", err))
-	// 	http.Error(w, "Некорректный UUID заявки", http.StatusBadRequest)
-	// 	return
-	// }
 
 	var input ApplicationDto.UpdateApplicationDTO
 	if err := render.DecodeJSON(r.Body, &input); err != nil {
@@ -416,12 +442,6 @@ func (h *ApplicationHandler) UpdateApplicationStatus(w http.ResponseWriter, r *h
 func (h *ApplicationHandler) DeleteApplication(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idStr := chi.URLParam(r, "id")
-	// id, err := uuid.Parse(idStr)
-	// if err != nil {
-	// 	h.logger.Error("Некорректный UUID заявки", slog.Any("error", err))
-	// 	http.Error(w, "Некорректный UUID заявки", http.StatusBadRequest)
-	// 	return
-	// }
 
 	h.logger.Info("Удаление заявки", slog.Any("id", idStr))
 	if err := h.service.DeleteApplication(ctx, idStr); err != nil {
@@ -433,37 +453,3 @@ func (h *ApplicationHandler) DeleteApplication(w http.ResponseWriter, r *http.Re
 	//render.JSON(w, r, map[string]interface{}{"message": "Заявка удалена"})
 	render.JSON(w, r, response.SuccessResponse("Заявка удалена"))
 }
-
-/* // Пример: Получение информации о событии
-type EventDetails struct {
-	Name     string `json:"name"`
-	Location string `json:"location"`
-}
-
-// Запрос в сервис событий (Event Service)
-func getEventDetails(eventID uint) (EventDetails, error) {
-	// HTTP-запрос к Event Service
-	resp, err := http.Get(fmt.Sprintf("http://event-service/events/%d", eventID))
-	if err != nil {
-		return EventDetails{}, err
-	}
-	defer resp.Body.Close()
-
-	var details EventDetails
-	if err := json.NewDecoder(resp.Body).Decode(&details); err != nil {
-		return EventDetails{}, err
-	}
-
-	return details, nil
-} */
-
-/* func syncEventDetails(application *Application) error {
-	details, err := getEventDetails(application.EventID)
-	if err != nil {
-		return err
-	}
-
-	application.EventName = details.Name
-	application.EventLocation = details.Location
-	return nil
-} */

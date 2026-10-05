@@ -7,12 +7,14 @@ import (
 	ApplicationDto "main/internal/dto/applications"
 	"main/internal/lib/errs"
 	"main/internal/lib/liblogger"
+	"main/internal/lib/verification"
 	models "main/internal/models/applications"
 	"main/internal/models/event"
 	"main/internal/models/school"
 	"main/internal/models/user"
 	"main/internal/storage/orm"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -130,28 +132,49 @@ func (s *ApplicationService) GetApplicationByID(ctx context.Context, id string) 
 	return ConvertApplicationToDTO(application), nil
 }
 
-// Получение всех заявок пользователя
-func (s *ApplicationService) GetApplicationsByUserID(ctx context.Context, userid string, page *int, limit *int) ([]ApplicationDto.ApplicationResponseDTO, error) {
+func (s *ApplicationService) GetApplicationsByUserID(ctx context.Context, userid string) ([]ApplicationDto.ApplicationResponseDTO, error) {
 	const op = "services.application_service.GetApplicationsByUserID"
-	const errMsg = "failed to find applications by userid"
+
 	uid, err := uuid.Parse(userid)
 	if err != nil {
-		return []ApplicationDto.ApplicationResponseDTO{}, fmt.Errorf("%s", errMsg)
+		return nil, fmt.Errorf("%s: invalid user id: %w", op, err)
 	}
 
-	offset := new(int)
-	if page != nil && limit != nil {
-		*offset = (*page - 1) * (*limit)
-	}
-
-	// Получаем заявки из репозитория
-	applications, err := s.repository.GetApplicationsByUserID(ctx, s.db, uid, offset, limit)
+	// 1. Получаем заявки
+	applications, err := s.repository.GetApplicationsByUserID(ctx, s.db, uid, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Конвертируем в DTO перед передачей
-	return ConvertManyApplicationsToDTO(applications), nil
+	if len(applications) == 0 {
+		return []ApplicationDto.ApplicationResponseDTO{}, nil
+	}
+
+	// 2. Собираем уникальные EventID
+	eventIDsMap := make(map[uuid.UUID]struct{})
+	for _, app := range applications {
+		eventIDsMap[app.EventID] = struct{}{}
+	}
+
+	eventIDs := make([]uuid.UUID, 0, len(eventIDsMap))
+	for id := range eventIDsMap {
+		eventIDs = append(eventIDs, id)
+	}
+
+	// 3. Запрашиваем все события одним запросом (батчем)
+	events, err := s.eventRepo.GetByListId(ctx, s.db, eventIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to fetch events: %w", op, err)
+	}
+
+	// 4. Индексируем события по ID для быстрого O(1) поиска
+	eventsMap := make(map[uuid.UUID]event.Event, len(events))
+	for _, ev := range events {
+		eventsMap[ev.ID] = ev
+	}
+
+	// 5. Конвертируем с привязкой событий
+	return ConvertManyApplicationsToDTONew(applications, eventsMap), nil
 }
 
 // Получение всех заявок события
@@ -462,6 +485,35 @@ func (s *ApplicationService) ReviewApplication(ctx context.Context, appIDStr str
 	return nil
 }
 
+func (s *ApplicationService) CancelApplication(ctx context.Context, appIDStr string) error {
+	const op = "services.EventService.CancelApplication"
+	log := s.log.With(slog.String("op", op))
+
+	// Проверка дедлайна на отзыв
+	if time.Now().UTC().After(verification.RegistrationDeadline) {
+		return errs.ErrBadRequest.Wrap("cancellation period has ended (deadline: 12.10.2026)")
+	}
+
+	appID, err := uuid.Parse(appIDStr)
+	if err != nil {
+		return errs.ErrBadRequest.Wrap("invalid application id")
+	}
+
+	// Обновляем статус заявки на models.CancelledStatus (например, 4)
+	applicationUpdate := models.Application{
+		ID:     appID,
+		Status: models.RejectedStatus,
+	}
+
+	err = s.repository.UpdateApplication(ctx, s.db, applicationUpdate)
+	if err != nil {
+		log.Error("failed to cancel application", liblogger.Err(err))
+		return errs.ErrInternalError.Wrap("failed to cancel application")
+	}
+
+	return nil
+}
+
 // Функции для преобразования между DTO и моделью
 
 func ConvertDTOtoApplication(dto ApplicationDto.CreateApplicationDTO) models.Application {
@@ -530,6 +582,29 @@ func ConvertManyApplicationsToDTO(applications []models.Application) []Applicati
 	var applicationsDTO []ApplicationDto.ApplicationResponseDTO
 	for _, application := range applications {
 		applicationsDTO = append(applicationsDTO, ConvertApplicationToDTO(application))
+	}
+	return applicationsDTO
+}
+
+func ConvertApplicationToDTONew(application models.Application, event event.Event) ApplicationDto.ApplicationResponseDTO {
+	return ApplicationDto.ApplicationResponseDTO{
+		ID:                 application.ID,
+		UserID:             application.UserID,
+		EventName:          event.Name,
+		EventID:            event.ID,
+		SchoolID:           application.SchoolID,
+		ClassParticipation: application.ClassParticipation,
+		Status:             application.Status,
+		SubmittedAt:        application.SubmittedAt,
+		UpdatedAt:          application.UpdatedAt,
+	}
+}
+
+func ConvertManyApplicationsToDTONew(applications []models.Application, eventsMap map[uuid.UUID]event.Event) []ApplicationDto.ApplicationResponseDTO {
+	applicationsDTO := make([]ApplicationDto.ApplicationResponseDTO, 0, len(applications))
+	for _, application := range applications {
+		event := eventsMap[application.EventID]
+		applicationsDTO = append(applicationsDTO, ConvertApplicationToDTONew(application, event))
 	}
 	return applicationsDTO
 }

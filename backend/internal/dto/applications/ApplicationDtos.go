@@ -36,12 +36,11 @@ type ApplicationResponseDTO struct {
 	ID                 uuid.UUID `json:"id"`
 	UserID             uuid.UUID `json:"userId"`
 	SchoolID           uuid.UUID `json:"schoolId"`
+	EventName          string    `json:"event_name"`
 	EventID            uuid.UUID `json:"eventId"`
 	Profile            string    `json:"profile"`
 	ClassParticipation int       `json:"class_participation"`
 	Status             int       `json:"status"` // // 2 = одобрено, 3 = отклонено, 1 = не обработано
-	Reason             int       `json:"reason"` //
-	Code               string    `json:"code"`   // 09_11_25
 	SubmittedAt        time.Time `json:"submittedAt"`
 	UpdatedAt          time.Time `json:"updatedAt"`
 }

@@ -3,10 +3,12 @@ package event_service
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	event_dto "main/internal/dto/event"
 	"main/internal/lib/errs"
 	"main/internal/lib/liblogger"
+	"main/internal/lib/verification"
 	models "main/internal/models/applications"
 	event_model "main/internal/models/event"
 	"main/internal/models/participant"
@@ -124,6 +126,11 @@ func (s *EventService) ApplyToEvent(ctx context.Context, eventIDStr, userIDStr s
 	const op = "services.EventService.ApplyToEvent"
 	log := s.log.With(slog.String("op", op))
 
+	// 1. Проверка срока подачи заявок (до 12.10.2026)
+	if time.Now().UTC().After(verification.RegistrationDeadline) {
+		return uuid.Nil, errs.ErrBadRequest.Wrap("registration period has ended (deadline: 12.10.2026)")
+	}
+
 	evID, err := uuid.Parse(eventIDStr)
 	if err != nil {
 		return uuid.Nil, errs.ErrBadRequest.Wrap("invalid event id")
@@ -157,25 +164,30 @@ func (s *EventService) ApplyToEvent(ctx context.Context, eventIDStr, userIDStr s
 
 	if participant.ClassNumber < ev.Class {
 		log.Error("user class lower than event", slog.Int("user class", participant.ClassNumber), slog.Int("event class", ev.Class))
-		return uuid.Nil, errs.ErrBadRequest.Wrap("user not allow")
+		return uuid.Nil, errs.ErrBadRequest.Wrap("user not allowed")
 	}
 
-	// Проверка на дублирование заявки
-	existing, err := s.appRepo.GetAllByFilter(ctx, s.db, models.Application{
-		UserID:  uID,
-		EventID: evID,
+	// 2. Проверка: у пользователя не должно быть ДРУГИХ активных заявок
+	// Ищем все заявки данного пользователя (без привязки к EventID)
+	userApplications, err := s.appRepo.GetAllByFilter(ctx, s.db, models.Application{
+		UserID: uID,
 	}, nil, nil, nil)
 	if err != nil {
-		log.Error("failed to check existing application", liblogger.Err(err))
+		log.Error("failed to check existing user applications", liblogger.Err(err))
 		return uuid.Nil, errs.ErrInternalError
 	}
-	if len(existing) > 0 {
-		return uuid.Nil, errs.ErrBadRequest.Wrap("application already exists for this event")
+
+	// Проверяем, есть ли среди них активная (Approved, Pending и т.д.)
+	for _, app := range userApplications {
+		// Считаем заявку активной, если её статус Approved
+		if app.Status == models.ApprovedStatus {
+			return uuid.Nil, errs.ErrBadRequest.Wrap("you already have an active application; cancel it before applying to a new event")
+		}
 	}
 
 	app := models.Application{
 		UserID:             uID,
-		SchoolID:           participant.UserId,
+		SchoolID:           participant.SchoolId, // если в модели участника поле называется SchoolId
 		EventID:            evID,
 		ClassParticipation: ev.Class,
 		Status:             models.ApprovedStatus,

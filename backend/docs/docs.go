@@ -66,6 +66,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/applications/{applicationID}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Отзывает ранее поданную заявку (доступно до 12.10.2026 включительно)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "applications"
+                ],
+                "summary": "Отмена заявки",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID заявки",
+                        "name": "applicationID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Заявка успешно отменена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный ID заявки или дедлайн истек",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/applications/{application_id}/review": {
             "patch": {
                 "security": [
@@ -2737,6 +2787,71 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/users/{userID}/applications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех поданных заявок пользователя по его UUID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "applications"
+                ],
+                "summary": "Получение заявок пользователя",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID пользователя",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список заявок",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Application"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные параметры пагинации или UUID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка получения данных",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -2998,6 +3113,36 @@ const docTemplate = `{
                 },
                 "expires_in": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.Application": {
+            "type": "object",
+            "properties": {
+                "classParticipation": {
+                    "type": "integer"
+                },
+                "eventID": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "schoolID": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "2 = одобрено, 3 = Отменено, 1 = не обработано",
+                    "type": "integer"
+                },
+                "submittedAt": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
                 }
             }
         },
