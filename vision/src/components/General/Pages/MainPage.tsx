@@ -216,8 +216,8 @@ const MainPage: React.FC = () => {
         ) : (
           <>
             <div className="text-center p-3 flex-fill border rounded">
-              <h4>Уважаемый участник профильной смены!<br />
-                Чтобы подать заявку на участие, пожалуйста, перейдите в Личный кабинет</h4>
+              <h4>Уважаемый кандидат на участие в профильной смене!<br />
+                Чтобы приступить к подаче заявки, пожалуйста, перейдите в Личный кабинет</h4>
               <Button onClick={() => navigate("/PersonalAccount")} variant="primary" size="lg" className="me-2 m-2">
                 Перейти в личный кабинет
               </Button>

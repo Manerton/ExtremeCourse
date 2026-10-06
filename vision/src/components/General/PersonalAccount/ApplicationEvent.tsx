@@ -3,9 +3,14 @@ import { useAuth } from "../../Helpers/AuthContext";
 import {
     axiosGetApplicationEvents,
     axiosRevokeApplication,
-    axiosStatusApplication
+    axiosStatusApplication,
 } from "../../../requests/ApplicationRequests";
-import { Button } from "react-bootstrap";
+import {
+    axiosGetPortfolioByApplicationId,
+    PortfolioData,
+} from "../../../requests/PortfolioRequests";
+import { Button, Badge } from "react-bootstrap";
+import PortfolioModal from "./PortfolioModal";
 
 const STATUS_ACTIVE = 2;   // Активная
 const STATUS_REVOKED = 3;  // Отозвана
@@ -30,15 +35,38 @@ interface Props {
 
 const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
     const [events, setEvents] = useState<ApplicationItem[]>([]);
+    const [portfolios, setPortfolios] = useState<Record<string, PortfolioData | null>>({});
     const [loading, setLoading] = useState(true);
 
+    // Состояния модального окна портфолио
+    const [modalShow, setModalShow] = useState(false);
+    const [activeApp, setActiveApp] = useState<ApplicationItem | null>(null);
+
     const { accessToken, user } = useAuth();
+
+    async function fetchPortfolios(apps: ApplicationItem[]) {
+        if (!accessToken) return;
+        const portfolioMap: Record<string, PortfolioData | null> = {};
+
+        await Promise.all(
+            apps.map(async (app) => {
+                try {
+                    const data = await axiosGetPortfolioByApplicationId(accessToken, app.id);
+                    portfolioMap[app.id] = data;
+                } catch {
+                    portfolioMap[app.id] = null;
+                }
+            })
+        );
+        setPortfolios(portfolioMap);
+    }
 
     async function fetchApplicationEvents() {
         try {
             const response = await axiosGetApplicationEvents(accessToken!, user!.id);
-            const items = Array.isArray(response) ? response : response.data;
-            setEvents(items || []);
+            const items: ApplicationItem[] = Array.isArray(response) ? response : response.data || [];
+            setEvents(items);
+            await fetchPortfolios(items);
         } catch (err) {
             console.error("Ошибка загрузки заявок:", err);
         } finally {
@@ -48,24 +76,19 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
 
     useEffect(() => {
         if (!accessToken || !user?.id) return;
-
         fetchApplicationEvents();
     }, [accessToken, user?.id, reloadFlag]);
 
-    // Проверяем, есть ли хотя бы одна заявка со статусом 2 (Активная)
     const hasActiveApplication = events.some((ev) => ev.status === STATUS_ACTIVE);
 
-    // Отзыв заявки
     async function handleRevoke(applicationId: string) {
         try {
             await axiosRevokeApplication(accessToken!, applicationId);
-
             setEvents((prev) =>
                 prev.map((ev) =>
                     ev.id === applicationId ? { ...ev, status: STATUS_REVOKED } : ev
                 )
             );
-
             onApplied();
         } catch (err) {
             console.error("Ошибка отзыва заявки:", err);
@@ -73,13 +96,10 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
         }
     }
 
-    // Переподача / Активация отозванной заявки через смену статуса
     async function handleReactivate(applicationId: string) {
         if (hasActiveApplication) return;
-
         try {
             await axiosStatusApplication(accessToken!, applicationId);
-
             alert("Заявка успешно повторно активирована!");
             await fetchApplicationEvents();
             onApplied();
@@ -89,12 +109,17 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
         }
     }
 
+    const openPortfolioModal = (app: ApplicationItem) => {
+        setActiveApp(app);
+        setModalShow(true);
+    };
+
     const formatDate = (isoDate: string) => {
         if (!isoDate) return "—";
         return new Date(isoDate).toLocaleDateString("ru-RU", {
             day: "2-digit",
             month: "2-digit",
-            year: "numeric"
+            year: "numeric",
         });
     };
 
@@ -111,7 +136,7 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                     <div>
                         <p className="mb-0">
                             Здесь отображаются все поданные вами заявки на участие в смене.
-                            Вы можете иметь только одну активную заявку одновременно.
+                            Вы можете иметь только одну активную заявку одновременно, прикреплять и редактировать портфолио.
                         </p>
                     </div>
                 </div>
@@ -122,52 +147,81 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                         setLoading(true);
                         fetchApplicationEvents();
                     }}
-                >Обновить
+                >
+                    <i className="bi bi-arrow-clockwise me-2"></i>
+                    Обновить
                 </button>
             </div>
 
-            {/* PC / Tablet View */}
+            {/* Таблица для ПК */}
             <table className="table table-bordered table-striped d-none d-md-table align-middle">
                 <thead>
                 <tr>
                     <th>Программа</th>
                     <th>Дата подачи</th>
-                    <th>Класс участия</th>
-                    <th>Статус</th>
-                    <th style={{ width: "160px" }}>Действие</th>
+                    <th>Класс</th>
+                    <th>Статус заявки</th>
+                    <th>Портфолио</th>
+                    <th style={{ width: "220px" }}>Действия</th>
                 </tr>
                 </thead>
                 <tbody>
                 {events.map((ev) => {
                     const isRevoked = ev.status === STATUS_REVOKED;
+                    const hasPortfolio = Boolean(portfolios[ev.id]);
 
                     return (
                         <tr key={ev.id} className={isRevoked ? "text-muted" : ""}>
                             <td>{ev.name}</td>
                             <td>{formatDate(ev.submittedAt)}</td>
-                            <td>{ev.class_participation}</td>
-                            <td>{getStatusText(ev.status)}</td>
-                            <td className="text-center">
-                                {isRevoked ? (
-                                    <Button
-                                        variant={hasActiveApplication ? "secondary" : "primary"}
-                                        size="sm"
-                                        className="w-100"
-                                        disabled={hasActiveApplication}
-                                        onClick={() => handleReactivate(ev.id)}
-                                    >
-                                        {hasActiveApplication ? "Недоступно" : "Подать"}
-                                    </Button>
+                            <td>{ev.name.toLowerCase().includes("эконом") ? "10 - 11" : ev.class_participation}</td>
+                            <td>
+                                {ev.status === STATUS_ACTIVE ? (
+                                    <Badge bg="success">Активная</Badge>
+                                ) : ev.status === STATUS_REVOKED ? (
+                                    <Badge bg="danger">Отозвана</Badge>
                                 ) : (
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
-                                        className="w-100"
-                                        onClick={() => handleRevoke(ev.id)}
-                                    >
-                                        Отозвать
-                                    </Button>
+                                    <Badge bg="secondary">Неизвестно</Badge>
                                 )}
+                            </td>
+                            <td>
+                                {hasPortfolio ? (
+                                    <Badge bg="success">Прикреплено</Badge>
+                                ) : (
+                                    <Badge bg="danger">Отсутствует</Badge>
+                                )}
+                            </td>
+                            <td>
+                                <div className="d-flex flex-column gap-1">
+                                    {!isRevoked && (
+                                        <Button
+                                            variant={hasPortfolio ? "outline-primary" : "primary"}
+                                            size="sm"
+                                            onClick={() => openPortfolioModal(ev)}
+                                        >
+                                            {hasPortfolio ? "Редактировать портфолио" : "Прикрепить портфолио"}
+                                        </Button>
+                                    )}
+
+                                    {isRevoked ? (
+                                        <Button
+                                            variant={hasActiveApplication ? "secondary" : "primary"}
+                                            size="sm"
+                                            disabled={hasActiveApplication}
+                                            onClick={() => handleReactivate(ev.id)}
+                                        >
+                                            {hasActiveApplication ? "Недоступно" : "Подать"}
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            variant="danger"
+                                            size="sm"
+                                            onClick={() => handleRevoke(ev.id)}
+                                        >
+                                            Отозвать заявку
+                                        </Button>
+                                    )}
+                                </div>
                             </td>
                         </tr>
                     );
@@ -175,10 +229,11 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                 </tbody>
             </table>
 
-            {/* Mobile View */}
+            {/* Карточки для мобильных устройств */}
             <div className="d-md-none">
                 {events.map((ev) => {
                     const isRevoked = ev.status === STATUS_REVOKED;
+                    const hasPortfolio = Boolean(portfolios[ev.id]);
 
                     return (
                         <div key={ev.id} className="card mb-3 shadow-sm">
@@ -188,48 +243,79 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                                 <p className="mb-1">
                                     <strong>Дата подачи:</strong> {formatDate(ev.submittedAt)}
                                 </p>
-
                                 <p className="mb-1">
-                                    <strong>Класс участия:</strong> {ev.name.toLowerCase().includes("эконом") ? "10 - 11" : ev.class_participation}
+                                    <strong>Класс участия:</strong>{" "}
+                                    {ev.name.toLowerCase().includes("эконом") ? "10 - 11" : ev.class_participation}
                                 </p>
-
+                                <p className="mb-1">
+                                    <strong>Статус:</strong>{" "}
+                                    {ev.status === STATUS_ACTIVE ? (
+                                        <Badge bg="success">Активная</Badge>
+                                    ) : (
+                                        <Badge bg="danger">Отозвана</Badge>
+                                    )}
+                                </p>
                                 <p className="mb-3">
-                                    <strong>Статус:</strong> {getStatusText(ev.status)}
+                                    <strong>Портфолио:</strong>{" "}
+                                    {hasPortfolio ? (
+                                        <Badge bg="success">Прикреплено</Badge>
+                                    ) : (
+                                        <Badge bg="danger">Отсутствует</Badge>
+                                    )}
                                 </p>
 
-                                {isRevoked ? (
-                                    <Button
-                                        variant={hasActiveApplication ? "secondary" : "primary"}
-                                        className="w-100"
-                                        disabled={hasActiveApplication}
-                                        onClick={() => handleReactivate(ev.id)}
-                                    >
-                                        {hasActiveApplication ? "Недоступно" : "Подать заявку"}
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        variant="danger"
-                                        className="w-100"
-                                        onClick={() => handleRevoke(ev.id)}
-                                    >
-                                        Отозвать
-                                    </Button>
-                                )}
+                                <div className="d-grid gap-2">
+                                    {!isRevoked && (
+                                        <Button
+                                            variant={hasPortfolio ? "outline-primary" : "primary"}
+                                            size="sm"
+                                            onClick={() => openPortfolioModal(ev)}
+                                        >
+                                            {hasPortfolio ? "Редактировать портфолио" : "Прикрепить портфолио"}
+                                        </Button>
+                                    )}
+
+                                    {isRevoked ? (
+                                        <Button
+                                            variant={hasActiveApplication ? "secondary" : "primary"}
+                                            disabled={hasActiveApplication}
+                                            onClick={() => handleReactivate(ev.id)}
+                                        >
+                                            Подать заявку
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            variant="danger"
+                                            onClick={() => handleRevoke(ev.id)}
+                                        >
+                                            Отозвать заявку
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     );
                 })}
             </div>
+
+            {/* Модальное окно */}
+            {activeApp && (
+                <PortfolioModal
+                    show={modalShow}
+                    onHide={() => {
+                        setModalShow(false);
+                        setActiveApp(null);
+                    }}
+                    applicationId={activeApp.id}
+                    programName={activeApp.name}
+                    classParticipation={activeApp.class_participation}
+                    token={accessToken!}
+                    existingPortfolio={portfolios[activeApp.id]}
+                    onSuccess={() => fetchApplicationEvents()}
+                />
+            )}
         </div>
     );
 };
 
 export default ApplicationEventPage;
-
-function getStatusText(status: number): string {
-    switch (status) {
-        case STATUS_ACTIVE: return "Активная";
-        case STATUS_REVOKED: return "Отозвана";
-        default: return "Неизвестно";
-    }
-}
