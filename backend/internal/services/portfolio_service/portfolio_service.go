@@ -13,6 +13,7 @@ import (
 	"main/internal/storage/orm"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type PortfolioRepository interface {
@@ -77,7 +78,7 @@ func (s *PortfolioService) CreatePortfolio(
 	p := models.Portfolio{
 		ApplicationID:   appID,
 		Description:     desc,
-		CodeAchievement: codes,
+		CodeAchievement: pq.StringArray(codes),
 		Score:           s.calculateScore(codes),
 		FilePath:        savedPath,
 	}
