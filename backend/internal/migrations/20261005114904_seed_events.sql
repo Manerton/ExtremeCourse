@@ -6,7 +6,6 @@ INSERT INTO events (id, name, subject, class, status) VALUES
                                                           (gen_random_uuid(), 'Олимпиадная химия', 'Химия', 9, 2),
                                                           (gen_random_uuid(), 'Олимпиадная биология', 'Биология', 10, 2),
                                                           (gen_random_uuid(), 'Олимпиадная информатика (профиль «Программирование»)', 'Информатика', 9, 2),
-                                                          (gen_random_uuid(), 'Олимпиадная экономика', 'Экономика', 10, 2),
                                                           (gen_random_uuid(), 'Олимпиадная экономика', 'Экономика', 11, 2);
 -- +goose StatementEnd
 

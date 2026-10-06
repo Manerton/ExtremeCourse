@@ -162,7 +162,7 @@ func (s *EventService) ApplyToEvent(ctx context.Context, eventIDStr, userIDStr s
 		return uuid.Nil, errs.ErrBadRequest.Wrap("event registration is closed")
 	}
 
-	if participant.ClassNumber < ev.Class {
+	if participant.ClassNumber > ev.Class {
 		log.Error("user class lower than event", slog.Int("user class", participant.ClassNumber), slog.Int("event class", ev.Class))
 		return uuid.Nil, errs.ErrBadRequest.Wrap("user not allowed")
 	}
