@@ -13,6 +13,7 @@ import (
 	"main/internal/handlers/event_handler"
 	"main/internal/handlers/link_handler"
 	"main/internal/handlers/participant_handler"
+	"main/internal/handlers/portfolio_handler"
 	"main/internal/handlers/school_handler"
 	"main/internal/handlers/user_handler"
 	"main/internal/lib/jwttoken"
@@ -23,6 +24,7 @@ import (
 	"main/internal/repositories/district_repository"
 	"main/internal/repositories/event_repository"
 	"main/internal/repositories/participant_repository"
+	"main/internal/repositories/portfolio_repository"
 	"main/internal/repositories/refresh_repository"
 	"main/internal/repositories/school_repository"
 	"main/internal/repositories/user_repository"
@@ -32,8 +34,10 @@ import (
 	"main/internal/services/event_service"
 	"main/internal/services/links_service"
 	"main/internal/services/participant_service"
+	"main/internal/services/portfolio_service"
 	"main/internal/services/school_service"
 	"main/internal/services/user_service"
+	"main/internal/storage/filestore"
 	"main/internal/storage/orm"
 	"main/internal/storage/postgresql"
 	"net/http"
@@ -77,6 +81,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		log.Info("migrations applied successfully")
 	}
 
+	diskStore := filestore.NewDiskStorage()
+
 	// init orm
 	gormORM := orm.NewGormORM(storage)
 	// init jwtManager
@@ -89,6 +95,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	districtRepository := &district_repository.DistrictRepository{}
 	eventReposotory := &event_repository.EventRepository{}
 	applicationRepository := &application_repository.ApplicationRepository{}
+	portfolioRepository := &portfolio_repository.PortfolioRepository{}
 
 	// init notify client
 	zvonokClient := zvonok_client.NewZvonokClient(cfg.ZvonokConfig)
@@ -102,6 +109,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	linkService := links_service.New(log, gormORM, cfg.Prefix, jwtManager, schoolRepository, districtRepository)
 	eventService := event_service.New(log, gormORM, eventReposotory, applicationRepository, participantRepository)
 	applicationService := application_service.NewApplicationService(log, gormORM, applicationRepository, userRepository, schoolRepository, eventReposotory)
+	portfolioService := portfolio_service.New(log, gormORM, portfolioRepository, diskStore)
 
 	// init handlers
 	userHandler := user_handler.New(userService)
@@ -112,6 +120,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	linkHandler := link_handler.New(linkService)
 	eventHandler := event_handler.New(eventService)
 	applicationHandler := application_handler.NewApplicationHandler(applicationService, log)
+	portfolioHandler := portfolio_handler.New(portfolioService)
 
 	// init router
 	router := chi.NewRouter()
@@ -132,6 +141,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		linkHandler,
 		applicationHandler,
 		eventHandler,
+		portfolioHandler,
 	)
 
 	// init server
@@ -152,7 +162,8 @@ func (a *App) initRoutes(router *chi.Mux,
 	districtHandler *district_handler.DistrictHandler,
 	linkHandler *link_handler.LinkHandler,
 	applicationHandler *application_handler.ApplicationHandler,
-	eventHandler *event_handler.EventHandler) {
+	eventHandler *event_handler.EventHandler,
+	portfolioHandler *portfolio_handler.PortfolioHandler) {
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
 
@@ -232,6 +243,14 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/api/users/{userID}/applications", applicationHandler.GetApplicationsByUserID)
 		r.Post("/api/applications/{applicationID}/cancel", applicationHandler.CancelApplication)
 		r.Patch("/api/applications/update-status/{applicationID}", applicationHandler.SwitchApplicationStatus)
+
+		r.Route("/api/applications/{application_id}/portfolio", func(r chi.Router) {
+			r.Post("/", portfolioHandler.CreatePortfolio)        // Multipart: file, description, achievements
+			r.Get("/", portfolioHandler.GetByApplicationID)      // JSON просмотр
+			r.Patch("/", portfolioHandler.Update)                // JSON редактирование полей
+			r.Put("/file", portfolioHandler.UploadOrReplaceFile) // Multipart: замена файла
+			r.Delete("/file", portfolioHandler.DeleteFile)       // Удаление файла
+		})
 
 		r.Route("/api/events", func(events chi.Router) {
 			events.Get("/", eventHandler.GetAllOpen)

@@ -216,6 +216,36 @@ definitions:
       school_id:
         type: string
     type: object
+  portfolio_dto.PortfolioResponseDTO:
+    properties:
+      application_id:
+        type: string
+      code_achievement:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      file_path:
+        type: string
+      id:
+        type: string
+      score:
+        type: integer
+    type: object
+  portfolio_dto.UpdatePortfolioDTO:
+    properties:
+      code_achievement:
+        example:
+        - '["MAXWELL_WINNER"'
+        - '"EULER_PRIZE_WINNER"]'
+        items:
+          type: string
+        type: array
+      description:
+        example: Новое описание проекта
+        type: string
+    type: object
   recover_dto.ChangePasswordDTORequest:
     properties:
       new_password:
@@ -452,6 +482,196 @@ info:
   title: Backend
   version: "1.0"
 paths:
+  /api/applications/{application_id}/portfolio:
+    get:
+      description: Получение портфолио по ID заявки
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/portfolio_dto.PortfolioResponseDTO'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get application portfolio
+      tags:
+      - portfolio
+    patch:
+      consumes:
+      - application/json
+      description: Редактирование текстового описания и списка достижений портфолио
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: string
+      - description: Обновляемые данные
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/portfolio_dto.UpdatePortfolioDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Update portfolio info
+      tags:
+      - portfolio
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загрузка портфолио участника вместе с файлом и списком достижений
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: string
+      - description: Описание портфолио
+        in: formData
+        name: description
+        type: string
+      - collectionFormat: csv
+        description: Список кодов достижений (или JSON-массив строкой)
+        in: formData
+        items:
+          type: string
+        name: achievements
+        type: array
+      - description: Файл с портфолио
+        in: formData
+        name: file
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload application portfolio
+      tags:
+      - portfolio
+  /api/applications/{application_id}/portfolio/file:
+    delete:
+      description: Удаление прикрепленного файла портфолио
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete portfolio file
+      tags:
+      - portfolio
+    put:
+      consumes:
+      - multipart/form-data
+      description: Прикрепление нового или замена существующего файла портфолио
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: string
+      - description: Новый файл портфолио
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload or replace portfolio file
+      tags:
+      - portfolio
   /api/applications/{application_id}/review:
     patch:
       consumes:
