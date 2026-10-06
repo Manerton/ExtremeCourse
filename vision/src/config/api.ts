@@ -59,6 +59,7 @@ export const APPLICATION = {
     getByEvent: `${API_URL}/applications/event/`,
     update: `${API_URL}/applications/`,
     delete: `${API_URL}/applications/`,
+    updateStatus: `${API_URL}/applications/update-status/`,
 };
 
 export const RESULT = {

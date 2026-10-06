@@ -96,7 +96,7 @@ const Footer: React.FC = () => {
               <div className="d-flex align-items-center gap-3">
                 {/* MAX */}
                 <a
-                    href="https://max.astrobl.ru"
+                    href="https://max.ru/id3015112545_gos"
                     target="_blank"
                     rel="noreferrer"
                     className="btn btn-outline-light rounded-circle p-0 d-inline-flex align-items-center justify-content-center social-btn"

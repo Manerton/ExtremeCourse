@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Collapse, Button, Card } from "react-bootstrap";
 
-// Твои компоненты
 import PersonalInfo from "./PersonalInfo";
 import ApplicationEventPage from "./ApplicationEvent";
 import OlympiadsSimpleTable from "./Olympiads";
-import { eachWeekOfInterval } from "date-fns";
 import { useAuth } from "../../Helpers/AuthContext";
 import { Profile, User, UserParticipant } from "../../types/user";
 import { UserRole } from "../../../dictionary/role";
@@ -16,9 +14,8 @@ import VideoInfoBlock from "../Pages/VideoInfoBlock";
 
 const ParticipantDashboard: React.FC = () => {
     const { accessToken, user } = useAuth();
-    const [appliedEventIds, setAppliedEventIds] = useState<string[]>([]);
-
-
+    const [activeEventIds, setActiveEventIds] = useState<string[]>([]);
+    const [hasActiveApplication, setHasActiveApplication] = useState(false);
 
     const [openInfo, setOpenInfo] = useState(false);
     const [openApps, setOpenApps] = useState(false);
@@ -28,21 +25,28 @@ const ParticipantDashboard: React.FC = () => {
     const [reloadInfo, setReloadInfo] = useState(0);
     const [profile, setProfile] = useState<Profile>();
 
-
-
     useEffect(() => {
         const fetchApplications = async () => {
             if (!accessToken || !user) return;
 
-            const apps = await axiosGetApplicationEvents(accessToken, user.id);
-            console.log(apps);
-            const ids = apps.map((a: any) => a.eventId);
-            setAppliedEventIds(ids);
+            try {
+                const response = await axiosGetApplicationEvents(accessToken, user.id);
+                const apps = Array.isArray(response) ? response : response.data || [];
+
+                // Проверяем, есть ли сейчас активная заявка (status === 2)
+                const hasActive = apps.some((a: any) => a.status === 2);
+                setHasActiveApplication(hasActive);
+
+                // ВСЕ eventId, на которые когда-либо создавалась заявка (активная или отозванная)
+                const allAppliedIds = apps.map((a: any) => a.eventId);
+                setActiveEventIds(allAppliedIds);
+            } catch (err) {
+                console.error("Ошибка загрузки заявок в дашборде:", err);
+            }
         };
 
         fetchApplications();
     }, [accessToken, user, reloadFlag]);
-
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -51,7 +55,6 @@ const ParticipantDashboard: React.FC = () => {
 
                 if (user.role === UserRole.Participant) {
                     const data: UserParticipant = await axiosSSOUserParticipantInfo(accessToken, user.id);
-                    console.log("data", data)
 
                     setProfile({
                         participant_id: data.participant_id,
@@ -85,7 +88,6 @@ const ParticipantDashboard: React.FC = () => {
                         participant_id: ""
                     });
                 }
-                console.log("profile", profile)
             } catch (err) {
                 console.error("Ошибка загрузки профиля:", err);
             }
@@ -94,10 +96,8 @@ const ParticipantDashboard: React.FC = () => {
         fetchUser();
     }, [accessToken, user, reloadInfo]);
 
-
     const reloadAll = () => setReloadFlag((prev) => prev + 1);
     const onReloadInfo = () => setReloadInfo((prev) => prev + 1);
-
 
     return (
         <div className="container mt-4">
@@ -165,16 +165,15 @@ const ParticipantDashboard: React.FC = () => {
                                 user_school_id={profile?.school ? profile?.school : ""}
                                 onApplied={reloadAll}
                                 reloadFlag={reloadFlag}
-                                appliedEventIds={appliedEventIds}
+                                appliedEventIds={activeEventIds}
+                                hasActiveApplication={hasActiveApplication}
                             />
                         </Card.Body>
                     </div>
                 </Collapse>
             </Card>
 
-            <VideoInfoBlock />
-
-
+            {/*<VideoInfoBlock />*/}
         </div>
     );
 };

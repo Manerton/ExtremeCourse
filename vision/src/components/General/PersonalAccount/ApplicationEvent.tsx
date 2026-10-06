@@ -3,15 +3,12 @@ import { useAuth } from "../../Helpers/AuthContext";
 import {
     axiosGetApplicationEvents,
     axiosRevokeApplication,
-    axiosCreateApplication
+    axiosStatusApplication
 } from "../../../requests/ApplicationRequests";
-import { Application } from "../../types/application";
+import { Button } from "react-bootstrap";
 
-// Статусы заявки
-const STATUS_SUBMITTED = 1; // Отправлена
-const STATUS_ACTIVE = 2;    // На рассмотрении / Активна
-const STATUS_APPROVED = 3;  // Одобрена
-const STATUS_REVOKED = 4;   // Отозвана / Отклонена
+const STATUS_ACTIVE = 2;   // Активная
+const STATUS_REVOKED = 3;  // Отозвана
 
 export interface ApplicationItem {
     id: string;
@@ -55,19 +52,14 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
         fetchApplicationEvents();
     }, [accessToken, user?.id, reloadFlag]);
 
-    // Проверяем, есть ли сейчас активная не отозванная заявка
-    const hasActiveApplication = events.some(
-        (ev) => ev.status !== STATUS_REVOKED
-    );
+    // Проверяем, есть ли хотя бы одна заявка со статусом 2 (Активная)
+    const hasActiveApplication = events.some((ev) => ev.status === STATUS_ACTIVE);
 
-    // Отзыв заявки (статус меняется на бэкенде)
+    // Отзыв заявки
     async function handleRevoke(applicationId: string) {
         try {
-            console.log("Отзыв заявки:", accessToken);
-            console.log("Отзыв заявки айди:", applicationId);
             await axiosRevokeApplication(accessToken!, applicationId);
 
-            // Локально переводим статус в отозванный или перезапрашиваем данные
             setEvents((prev) =>
                 prev.map((ev) =>
                     ev.id === applicationId ? { ...ev, status: STATUS_REVOKED } : ev
@@ -81,27 +73,19 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
         }
     }
 
-    // Повторная подача ранее отозванной заявки
-    async function handleReapply(item: ApplicationItem) {
+    // Переподача / Активация отозванной заявки через смену статуса
+    async function handleReactivate(applicationId: string) {
         if (hasActiveApplication) return;
 
         try {
-            const application = {
-                userId: user?.id.toString(),
-                eventId: item.eventId,
-                schoolId: item.schoolId,
-                class_participation: item.class_participation,
-                profile: item.profile ?? ""
-            } as unknown as Application;
+            await axiosStatusApplication(accessToken!, applicationId);
 
-            await axiosCreateApplication(accessToken!, application);
-
-            alert("Заявка повторно отправлена!");
+            alert("Заявка успешно повторно активирована!");
             await fetchApplicationEvents();
             onApplied();
         } catch (err) {
-            console.error("Ошибка при подаче заявки:", err);
-            alert("Ошибка при отправке заявки");
+            console.error("Ошибка при смене статуса заявки:", err);
+            alert("Не удалось активировать заявку");
         }
     }
 
@@ -125,10 +109,9 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                 <div className="d-flex align-items-start">
                     <i className="bi bi-info-circle fs-3 me-3 text-primary"></i>
                     <div>
-                        <h4 className="mb-1">Ваши заявки</h4>
                         <p className="mb-0">
                             Здесь отображаются все поданные вами заявки на участие в смене.
-                            Вы можете отслеживать статус рассмотрения или отозвать заявку до окончания регистрации.
+                            Вы можете иметь только одну активную заявку одновременно.
                         </p>
                     </div>
                 </div>
@@ -139,9 +122,7 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                         setLoading(true);
                         fetchApplicationEvents();
                     }}
-                >
-                    <i className="bi bi-arrow-clockwise me-2"></i>
-                    Обновить
+                >Обновить
                 </button>
             </div>
 
@@ -161,27 +142,31 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                     const isRevoked = ev.status === STATUS_REVOKED;
 
                     return (
-                        <tr key={ev.id} style={{ opacity: isRevoked ? 0.7 : 1 }}>
+                        <tr key={ev.id} className={isRevoked ? "text-muted" : ""}>
                             <td>{ev.name}</td>
                             <td>{formatDate(ev.submittedAt)}</td>
                             <td>{ev.class_participation}</td>
                             <td>{getStatusText(ev.status)}</td>
                             <td className="text-center">
                                 {isRevoked ? (
-                                    <button
-                                        className="btn btn-sm btn-primary w-100"
+                                    <Button
+                                        variant={hasActiveApplication ? "secondary" : "primary"}
+                                        size="sm"
+                                        className="w-100"
                                         disabled={hasActiveApplication}
-                                        onClick={() => handleReapply(ev)}
+                                        onClick={() => handleReactivate(ev.id)}
                                     >
-                                        Подать
-                                    </button>
+                                        {hasActiveApplication ? "Недоступно" : "Подать"}
+                                    </Button>
                                 ) : (
-                                    <button
-                                        className="btn btn-sm btn-danger w-100"
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        className="w-100"
                                         onClick={() => handleRevoke(ev.id)}
                                     >
                                         Отозвать
-                                    </button>
+                                    </Button>
                                 )}
                             </td>
                         </tr>
@@ -196,20 +181,16 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                     const isRevoked = ev.status === STATUS_REVOKED;
 
                     return (
-                        <div key={ev.id} className="card mb-3 shadow-sm" style={{ opacity: isRevoked ? 0.7 : 1 }}>
+                        <div key={ev.id} className="card mb-3 shadow-sm">
                             <div className="card-body">
-                                <h5 className="card-title">{ev.name}</h5>
+                                <h5 className={`card-title ${isRevoked ? "text-muted" : ""}`}>{ev.name}</h5>
 
                                 <p className="mb-1">
                                     <strong>Дата подачи:</strong> {formatDate(ev.submittedAt)}
                                 </p>
 
                                 <p className="mb-1">
-                                    <strong>Профиль:</strong> {ev.profile ? ev.profile : "—"}
-                                </p>
-
-                                <p className="mb-1">
-                                    <strong>Класс участия:</strong> {ev.class_participation}
+                                    <strong>Класс участия:</strong> {ev.name.toLowerCase().includes("эконом") ? "10 - 11" : ev.class_participation}
                                 </p>
 
                                 <p className="mb-3">
@@ -217,20 +198,22 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                                 </p>
 
                                 {isRevoked ? (
-                                    <button
-                                        className="btn btn-primary w-100"
+                                    <Button
+                                        variant={hasActiveApplication ? "secondary" : "primary"}
+                                        className="w-100"
                                         disabled={hasActiveApplication}
-                                        onClick={() => handleReapply(ev)}
+                                        onClick={() => handleReactivate(ev.id)}
                                     >
-                                        Подать заявку
-                                    </button>
+                                        {hasActiveApplication ? "Недоступно" : "Подать заявку"}
+                                    </Button>
                                 ) : (
-                                    <button
-                                        className="btn btn-danger w-100"
+                                    <Button
+                                        variant="danger"
+                                        className="w-100"
                                         onClick={() => handleRevoke(ev.id)}
                                     >
                                         Отозвать
-                                    </button>
+                                    </Button>
                                 )}
                             </div>
                         </div>
@@ -245,8 +228,8 @@ export default ApplicationEventPage;
 
 function getStatusText(status: number): string {
     switch (status) {
-        case 2: return "Одобрена";
-        case 3: return "Отозвана";
+        case STATUS_ACTIVE: return "Активная";
+        case STATUS_REVOKED: return "Отозвана";
         default: return "Неизвестно";
     }
 }

@@ -115,6 +115,21 @@ export async function axiosRevokeApplication(token: string, applicationId: strin
     return res.data;
 }
 
+export async function axiosStatusApplication(token: string, applicationId: string) {
+    const res = await axios.patch(
+        `${APPLICATION.updateStatus}${applicationId}`,
+        {}, // 2-й аргумент: пустое тело (body)
+        {   // 3-й аргумент: конфигурация с заголовками
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            withCredentials: true
+        }
+    );
+    return res.data;
+}
+
 export async function axiosUpdateApplication(token: string, applicationId: string, status: string)
 {
     const res = await axios.put(

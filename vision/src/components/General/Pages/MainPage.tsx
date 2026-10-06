@@ -226,7 +226,7 @@ const MainPage: React.FC = () => {
         )}
       </section>
 
-      <VideoInfoBlock />
+      {/*<VideoInfoBlock />*/}
 
       {/* FAQ Section */}
       <section className="mt-4 mb-4  py-3 text-center border rounded">
