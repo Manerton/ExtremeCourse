@@ -17,6 +17,8 @@ WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata
 
+RUN mkdir -p /app/upload
+
 # Копируем скомпилированное приложение из первого этапа
 COPY --from=builder /app/backend /app/backend
 COPY --from=builder /app/config-yaml /app/config-yaml

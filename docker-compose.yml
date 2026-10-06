@@ -66,6 +66,7 @@ services:
       - CONFIG_PATH=/app/config.yaml
     volumes:
       - ./backend/config-yaml/docker.yaml:/app/config.yaml:ro
+      - ./uploads:/app/upload
     networks:
       - courses
     ports:

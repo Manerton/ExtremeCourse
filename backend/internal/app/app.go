@@ -81,7 +81,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		log.Info("migrations applied successfully")
 	}
 
-	diskStore := filestore.NewDiskStorage()
+	diskStore := filestore.NewDiskStorage("upload")
 
 	// init orm
 	gormORM := orm.NewGormORM(storage)
