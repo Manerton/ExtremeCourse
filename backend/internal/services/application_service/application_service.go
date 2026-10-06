@@ -177,6 +177,54 @@ func (s *ApplicationService) GetApplicationsByUserID(ctx context.Context, userid
 	return ConvertManyApplicationsToDTONew(applications, eventsMap), nil
 }
 
+func (s *ApplicationService) SwitchApplicationStatus(ctx context.Context, idStr string) error {
+	const op = "services.application_service.SwitchApplicationStatus"
+
+	log := s.log.With(slog.String("op", op))
+
+	// Проверка дедлайна на изменение
+	if time.Now().UTC().After(verification.RegistrationDeadline) {
+		return errs.ErrBadRequest.Wrap("cancellation period has ended (deadline: 12.10.2026)")
+	}
+
+	uid, err := uuid.Parse(idStr)
+	if err != nil {
+		log.Error("failed parse id to uuid", slog.String("id", idStr))
+		return fmt.Errorf("failed parse id to uuid: %w", err)
+	}
+
+	application, err := s.repository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		log.Error("failed get by id", liblogger.Err(err))
+		return fmt.Errorf("failed get by id: %w", err)
+	}
+
+	if application.Status == models.ApprovedStatus {
+		application.Status = models.RejectedStatus
+	} else {
+		application.Status = models.ApprovedStatus
+	}
+
+	applications, err := s.repository.GetAllByFilter(ctx, s.db, models.Application{Status: models.ApprovedStatus}, nil, nil, nil)
+	if err != nil {
+		log.Error("failed get by status", liblogger.Err(err))
+		return fmt.Errorf("failed get by status: %w", err)
+	}
+
+	if len(applications) != 0 {
+		log.Error("cannot approve more than one application")
+		return fmt.Errorf("cannot approve more than one application: %d", err)
+	}
+
+	err = s.repository.UpdateApplication(ctx, s.db, application)
+	if err != nil {
+		log.Error("failed to cancel application", liblogger.Err(err))
+		return errs.ErrInternalError.Wrap("failed to cancel application")
+	}
+
+	return nil
+}
+
 // Получение всех заявок события
 func (s *ApplicationService) GetApplicationsByEventID(ctx context.Context, eventID string, page *int, limit *int) ([]ApplicationDto.ApplicationResponseDTO, error) {
 	const op = "services.application_service.GetApplicationsByEventID"

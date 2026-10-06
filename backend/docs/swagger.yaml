@@ -591,6 +591,38 @@ paths:
       summary: Get all full applications
       tags:
       - applications
+  /api/applications/update-status/{applicationID}:
+    patch:
+      consumes:
+      - application/json
+      description: Смена ранее поданной заявки (доступно до 12.10.2026 включительно)
+      parameters:
+      - description: UUID заявки
+        format: uuid
+        in: path
+        name: applicationID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Заявка успешно изменина
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "400":
+          description: Некорректный ID заявки или дедлайн истек
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Смена заявки
+      tags:
+      - applications
   /api/byadmin/register:
     post:
       consumes:

@@ -288,6 +288,36 @@ func (h *ApplicationHandler) CancelApplication(w http.ResponseWriter, r *http.Re
 	})
 }
 
+// SwitchApplicationStatus меняет заявку пользователя
+// @Summary      Смена заявки
+// @Security BearerAuth
+// @Description  Смена ранее поданной заявки (доступно до 12.10.2026 включительно)
+// @Tags         applications
+// @Accept       json
+// @Produce      json
+// @Param        applicationID   path      string  true  "UUID заявки"  Format(uuid)
+// @Success      200             {object}  response.ApiResponse  "Заявка успешно изменина"
+// @Failure      400             {object}  response.ApiResponse  "Некорректный ID заявки или дедлайн истек"
+// @Failure      500             {object}  response.ApiResponse  "Внутренняя ошибка сервера"
+// @Router       /api/applications/update-status/{applicationID} [patch]
+func (h *ApplicationHandler) SwitchApplicationStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := chi.URLParam(r, "applicationID")
+
+	if err := h.service.SwitchApplicationStatus(ctx, idStr); err != nil {
+		h.logger.Error("Ошибка обновления статуса заявок", slog.Any("error", err))
+		http.Error(w, "Не удалось обновить заявку", http.StatusInternalServerError)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       "application switch successfully",
+	})
+}
+
 // Получение заявок по ID события
 func (h *ApplicationHandler) GetApplicationsByEventID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

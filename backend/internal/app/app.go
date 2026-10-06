@@ -231,6 +231,7 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Patch("/api/applications/{id}/review", applicationHandler.ReviewApplication)
 		r.Get("/api/users/{userID}/applications", applicationHandler.GetApplicationsByUserID)
 		r.Post("/api/applications/{applicationID}/cancel", applicationHandler.CancelApplication)
+		r.Patch("/api/applications/update-status/{applicationID}", applicationHandler.SwitchApplicationStatus)
 
 		r.Route("/api/events", func(events chi.Router) {
 			events.Get("/", eventHandler.GetAllOpen)
