@@ -2,17 +2,6 @@
 
 services:
 
-  vision:
-    build:
-      context: ./vision
-      dockerfile: Dockerfile.prod
-    container_name: vision_prod
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8080:80"          # Nginx на хосте будет ходить сюда
-    networks:
-      - courses
-
   # vision:
   #     build:
   #       context: ./vision
@@ -42,7 +31,7 @@ services:
       POSTGRES_PASSWORD: course_pass
       POSTGRES_DB: ExtremeCourse
     ports:
-      - ":5432"
+      - "5444:5432"
     networks:
       - courses
     volumes:
@@ -66,17 +55,18 @@ services:
       - CONFIG_PATH=/app/config.yaml
     volumes:
       - ./backend/config-yaml/docker.yaml:/app/config.yaml:ro
+
     networks:
       - courses
     ports:
-      - "127.0.0.1:8989:8080"
+      - "8989:8080"
   
   redis:
     image: redis:alpine
     container_name: redis
     restart: unless-stopped
     ports:
-      - ":6379"
+      - "6379:6379"
     networks: 
       - courses
     volumes:
