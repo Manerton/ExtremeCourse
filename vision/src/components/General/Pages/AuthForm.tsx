@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Container, Row, Col, Form, Button } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, InputGroup } from "react-bootstrap";
 import { useAuth } from "../../Helpers/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { BsEye, BsEyeSlash } from "react-icons/bs";
 
 const LoginPage: React.FC = () => {
     const { login } = useAuth();
@@ -11,6 +12,7 @@ const LoginPage: React.FC = () => {
 
     const [authEmail, setAuthEmail] = useState("");
     const [authPassword, setAuthPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     const hints = {
         title: "Вход в личный кабинет",
@@ -18,7 +20,7 @@ const LoginPage: React.FC = () => {
     };
 
     const handleLogin = async () => {
-        setError(null); // очищаем старую ошибку
+        setError(null);
 
         const success = await login(authEmail, authPassword);
 
@@ -33,19 +35,19 @@ const LoginPage: React.FC = () => {
         <Container fluid className="vh-100 d-flex align-items-center justify-content-center">
             <Row className="w-100 justify-content-center">
                 <Col md={6} className="d-flex flex-column justify-content-center align-items-center text-center"
-                    style={{
-                        background: "linear-gradient(135deg, #3a8dde, #4fd1c5)",
-                        color: "#fff",
-                        padding: "2rem",
-                        borderRadius: "10px 0 0 10px",
-                    }}
+                     style={{
+                         background: "linear-gradient(135deg, #3a8dde, #4fd1c5)",
+                         color: "#fff",
+                         padding: "2rem",
+                         borderRadius: "10px 0 0 10px",
+                     }}
                 >
                     <h1 className="fw-bold">{hints.title}</h1>
                     <p>{hints.text}</p>
                 </Col>
 
                 <Col md={6} className="p-3 border border-1 d-flex flex-column justify-content-center align-items-center"
-                    style={{ borderRadius: "0 10px 10px 0", minHeight: "572px" }}
+                     style={{ borderRadius: "0 10px 10px 0", minHeight: "572px" }}
                 >
                     <div className="d-flex flex-column justify-content-center align-items-center w-100" style={{ height: "100%" }}>
                         <h4 className="fw-bold mb-3 w-100" style={{ textAlign: "center" }}>Авторизация в личный кабинет</h4>
@@ -65,12 +67,26 @@ const LoginPage: React.FC = () => {
                         </Form.Group>
 
                         <Form.Group className="mb-3 w-100">
-                            <Form.Control
-                                type="password"
-                                placeholder="Пароль"
-                                value={authPassword}
-                                onChange={(e) => setAuthPassword(e.target.value)}
-                            />
+                            <InputGroup>
+                                <Form.Control
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="Пароль"
+                                    value={authPassword}
+                                    onChange={(e) => setAuthPassword(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                                    className="border-end-0"
+                                />
+                                <Button
+                                    variant="outline-secondary"
+                                    className="border-start-0 bg-transparent text-secondary"
+                                    style={{ borderColor: "#ced4da" }}
+                                    onClick={() => setShowPassword((prev) => !prev)}
+                                    tabIndex={-1}
+                                    title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                                >
+                                    {showPassword ? <BsEyeSlash size={18} /> : <BsEye size={18} />}
+                                </Button>
+                            </InputGroup>
                         </Form.Group>
 
                         <Button className="w-100" onClick={() => handleLogin()}>
