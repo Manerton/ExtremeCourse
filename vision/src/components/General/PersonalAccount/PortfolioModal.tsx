@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Modal, Button, Form, Alert } from "react-bootstrap";
+import React, { useState, useEffect, useRef } from "react";
+import { Modal, Button, Form, Alert, Badge } from "react-bootstrap";
 import {
     Achievement,
     AchievementType,
@@ -19,7 +19,6 @@ interface Props {
     onSuccess: () => void;
 }
 
-// Карты взаимоисключающих достижений (Победитель <-> Призёр одного этапа)
 const CONFLICT_PAIRS: Record<AchievementType, AchievementType> = {
     [Achievement.VsoshMunWinner]: Achievement.VsoshMunPrizeWinner,
     [Achievement.VsoshMunPrizeWinner]: Achievement.VsoshMunWinner,
@@ -59,6 +58,8 @@ const PortfolioModal: React.FC<Props> = ({
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const isEditMode = Boolean(existingPortfolio);
     const lowerName = programName.toLowerCase();
 
@@ -70,7 +71,11 @@ const PortfolioModal: React.FC<Props> = ({
     useEffect(() => {
         if (existingPortfolio) {
             setDescription(existingPortfolio.description || "");
-            setSelectedAchievements(existingPortfolio.achievements || []);
+            const achievementsList =
+                existingPortfolio.code_achievement ||
+                existingPortfolio.achievements ||
+                [];
+            setSelectedAchievements(achievementsList);
         } else {
             setDescription("");
             setSelectedAchievements([]);
@@ -79,7 +84,6 @@ const PortfolioModal: React.FC<Props> = ({
         setError(null);
     }, [existingPortfolio, show]);
 
-    // Взаимное исключение: при выборе одной роли в этапе парная роль автоматически отключается
     const handleCheckboxToggle = (code: AchievementType) => {
         setSelectedAchievements((prev) => {
             if (prev.includes(code)) {
@@ -117,16 +121,13 @@ const PortfolioModal: React.FC<Props> = ({
         e.preventDefault();
         setError(null);
 
-        if (!description.trim()) {
-            setError("Укажите описание портфолио.");
-            return;
-        }
-
+        // Достижения остаются обязательными
         if (selectedAchievements.length === 0) {
-            setError("Выберите хотя бы одно достижение.");
+            setError("Пожалуйста, отметьте хотя бы одно достижение.");
             return;
         }
 
+        // Файл обязателен при первичном создании
         if (!isEditMode && !file) {
             setError("Пожалуйста, прикрепите файл портфолио (.pdf или .pptx).");
             return;
@@ -134,16 +135,27 @@ const PortfolioModal: React.FC<Props> = ({
 
         try {
             setSubmitting(true);
+
             if (isEditMode) {
-                // Если при редактировании прикреплен новый файл, используем upload, иначе обновляем текстовые данные
-                if (file) {
-                    await axiosUploadPortfolio(token, applicationId, description, selectedAchievements, file);
-                } else {
-                    await axiosUpdatePortfolio(token, applicationId, description, selectedAchievements);
-                }
+                // PATCH multipart/form-data с файлом или без него
+                await axiosUpdatePortfolio(
+                    token,
+                    applicationId,
+                    description,
+                    selectedAchievements,
+                    file
+                );
             } else {
-                await axiosUploadPortfolio(token, applicationId, description, selectedAchievements, file!);
+                // POST multipart/form-data (файл обязателен)
+                await axiosUploadPortfolio(
+                    token,
+                    applicationId,
+                    description,
+                    selectedAchievements,
+                    file!
+                );
             }
+
             onSuccess();
             onHide();
         } catch (err: any) {
@@ -164,35 +176,23 @@ const PortfolioModal: React.FC<Props> = ({
                 <Modal.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
 
-                    <Form.Group className="mb-4">
-                        <Form.Label className="d-block mb-2">
-                            <strong>Виды индивидуальных достижений:</strong>
+                    {/* Блок достижений */}
+                    <div className="mb-4">
+                        <Form.Label className="d-block mb-3 fw-bold fs-6">
+                            Индивидуальные достижения участника:
                         </Form.Label>
-
-                        {/* Базовые достижения: Муниципальный этап ВсОШ */}
-                        <div className="mb-2">
-                            <Form.Check
-                                type="checkbox"
-                                id="ach-vsosh-win"
-                                label="Победитель муниципального этапа ВсОШ по соответствующей дисциплине"
-                                checked={selectedAchievements.includes(Achievement.VsoshMunWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunWinner)}
-                            />
-                            <Form.Check
-                                type="checkbox"
-                                id="ach-vsosh-prize"
-                                label="Призёр муниципального этапа ВсОШ по соответствующей дисциплине"
-                                checked={selectedAchievements.includes(Achievement.VsoshMunPrizeWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunPrizeWinner)}
-                            />
-                        </div>
 
                         {/* Региональный этап ВсОШ (10-11 классы) */}
                         {isSeniorClass && (
-                            <div className="mb-2">
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="info" className="me-2 text-dark">ВсОШ</Badge>
+                                    <span className="fw-semibold text-secondary">Региональный этап (10–11 классы)</span>
+                                </div>
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-vsosh-reg-win"
+                                    className="mb-2"
                                     label="Победитель регионального этапа ВсОШ по соответствующей дисциплине"
                                     checked={selectedAchievements.includes(Achievement.VsoshRegWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.VsoshRegWinner)}
@@ -207,19 +207,49 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
+                        {/* Базовый блок: Муниципальный этап ВсОШ */}
+                        <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                            <div className="d-flex align-items-center mb-2">
+                                <Badge bg="primary" className="me-2">ВсОШ</Badge>
+                                <span className="fw-semibold text-secondary">Муниципальный этап</span>
+                            </div>
+                            <Form.Check
+                                type="checkbox"
+                                id="ach-vsosh-win"
+                                className="mb-2"
+                                label="Победитель муниципального этапа ВсОШ по соответствующей дисциплине"
+                                checked={selectedAchievements.includes(Achievement.VsoshMunWinner)}
+                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunWinner)}
+                            />
+                            <Form.Check
+                                type="checkbox"
+                                id="ach-vsosh-prize"
+                                label="Призёр муниципального этапа ВсОШ по соответствующей дисциплине"
+                                checked={selectedAchievements.includes(Achievement.VsoshMunPrizeWinner)}
+                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunPrizeWinner)}
+                            />
+                        </div>
+
+
+
                         {/* Перечневые олимпиады */}
-                        <div className="mb-2">
+                        <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                            <div className="d-flex align-items-center mb-2">
+                                <Badge bg="success" className="me-2">Минобрнауки</Badge>
+                                <span className="fw-semibold text-secondary">Олимпиады из перечня Минобрнауки</span>
+                            </div>
                             <Form.Check
                                 type="checkbox"
                                 id="ach-minobr-win"
-                                label="Победитель олимпиад из перечня Минпросвещения РФ по соответствующей дисциплине"
+                                className="mb-2"
+                                label="Победитель олимпиад из перечня Минобрнауки по соответствующей дисциплине"
                                 checked={selectedAchievements.includes(Achievement.MinobrListWinner)}
                                 onChange={() => handleCheckboxToggle(Achievement.MinobrListWinner)}
                             />
                             <Form.Check
                                 type="checkbox"
                                 id="ach-minobr-prize"
-                                label="Призёр олимпиад из перечня Минпросвещения РФ по соответствующей дисциплине"
+                                label="Призёр олимпиад из перечня Минобрнауки по соответствующей дисциплине"
                                 checked={selectedAchievements.includes(Achievement.MinobrListPrizeWinner)}
                                 onChange={() => handleCheckboxToggle(Achievement.MinobrListPrizeWinner)}
                             />
@@ -227,13 +257,15 @@ const PortfolioModal: React.FC<Props> = ({
 
                         {/* Олимпиада Эйлера (математика) */}
                         {isMath && (
-                            <div className="mt-3 pt-2 border-top">
-                                <span className="text-muted d-block mb-1 small fw-bold">
-                                    Олимпиада им. Леонарда Эйлера:
-                                </span>
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">Математика</Badge>
+                                    <span className="fw-semibold text-secondary">Олимпиада им. Леонарда Эйлера</span>
+                                </div>
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-euler-win"
+                                    className="mb-2"
                                     label="Победитель олимпиады им. Леонарда Эйлера"
                                     checked={selectedAchievements.includes(Achievement.EulerWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.EulerWinner)}
@@ -250,13 +282,15 @@ const PortfolioModal: React.FC<Props> = ({
 
                         {/* Олимпиада Максвелла (физика) */}
                         {isPhysics && (
-                            <div className="mt-3 pt-2 border-top">
-                                <span className="text-muted d-block mb-1 small fw-bold">
-                                    Олимпиада им. Дж. Кл. Максвелла:
-                                </span>
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">Физика</Badge>
+                                    <span className="fw-semibold text-secondary">Олимпиада им. Дж. Кл. Максвелла</span>
+                                </div>
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-maxwell-win"
+                                    className="mb-2"
                                     label="Победитель олимпиады им. Дж. Кл. Максвелла"
                                     checked={selectedAchievements.includes(Achievement.MaxwellWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.MaxwellWinner)}
@@ -271,29 +305,17 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
-                        {/* Результаты по математике (экономика) */}
+                        {/* Результаты по математике для экономики */}
                         {isEconomics && (
-                            <div className="mt-3 pt-2 border-top">
-                                <span className="text-muted d-block mb-1 small fw-bold">
-                                    Результаты ВсОШ по математике:
-                                </span>
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-math-mun-win"
-                                    label="Победитель муниципального этапа ВсОШ по математике"
-                                    checked={selectedAchievements.includes(Achievement.MathMunWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MathMunWinner)}
-                                />
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-math-mun-prize"
-                                    label="Призёр муниципального этапа ВсОШ по математике"
-                                    checked={selectedAchievements.includes(Achievement.MathMunPrizeWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MathMunPrizeWinner)}
-                                />
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">Экономика</Badge>
+                                    <span className="fw-semibold text-secondary">Достижения ВсОШ по математике</span>
+                                </div>
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-math-reg-win"
+                                    className="mb-2"
                                     label="Победитель регионального этапа ВсОШ по математике"
                                     checked={selectedAchievements.includes(Achievement.MathRegWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.MathRegWinner)}
@@ -305,34 +327,92 @@ const PortfolioModal: React.FC<Props> = ({
                                     checked={selectedAchievements.includes(Achievement.MathRegPrizeWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.MathRegPrizeWinner)}
                                 />
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-math-mun-win"
+                                    className="mb-2"
+                                    label="Победитель муниципального этапа ВсОШ по математике"
+                                    checked={selectedAchievements.includes(Achievement.MathMunWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MathMunWinner)}
+                                />
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-math-mun-prize"
+                                    className="mb-2"
+                                    label="Призёр муниципального этапа ВсОШ по математике"
+                                    checked={selectedAchievements.includes(Achievement.MathMunPrizeWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MathMunPrizeWinner)}
+                                />
+
                             </div>
                         )}
-                    </Form.Group>
+                    </div>
 
-                    <Form.Group className="mb-3">
-                        <Form.Label><strong>Описание портфолио:</strong></Form.Label>
+                    {/* Описание портфолио (теперь необязательное) */}
+                    <Form.Group className="mb-4">
+                        <Form.Label>
+                            <strong>Описание портфолио <span className="text-muted fw-normal">(необязательно):</span></strong>
+                        </Form.Label>
                         <Form.Control
                             as="textarea"
                             rows={3}
                             placeholder="Опишите ваши грамоты, успехи или дайте пояснения к прикрепленным файлам..."
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            required
                         />
                     </Form.Group>
 
-                    {/* Поле файла: обязательно при создании, опционально при редактировании */}
+                    {/* Локализованное поле прикрепления файла */}
                     <Form.Group className="mb-3">
-                        <Form.Label>
+                        <Form.Label className="d-block mb-1">
                             <strong>Файл портфолио (.pdf, .pptx):</strong>
+                            {!isEditMode && <span className="text-danger ms-1">*</span>}
                         </Form.Label>
-                        <Form.Control
+
+                        {isEditMode && existingPortfolio?.file_path && (
+                            <div className="small text-success mb-2 p-2 bg-success-subtle border border-success-subtle rounded">
+                                ✓ Уже загружен файл: <code>{existingPortfolio.file_path.split("/").pop()}</code>
+                            </div>
+                        )}
+
+                        {/* Скрытый нативный input */}
+                        <input
+                            ref={fileInputRef}
                             type="file"
+                            className="d-none"
                             accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                             onChange={handleFileChange}
-                            required={!isEditMode}
                         />
-                        <Form.Text className="text-muted d-block mt-1">
+
+                        {/* Локализованный кастомный контрол */}
+                        <div className="input-group">
+                            <Button
+                                variant="outline-primary"
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <i className="bi bi-paperclip me-1"></i>
+                                {file ? "Заменить файл" : "Выбрать файл"}
+                            </Button>
+                            <span className="form-control text-truncate bg-white text-muted">
+                                {file ? file.name : "Файл не выбран"}
+                            </span>
+                            {file && (
+                                <Button
+                                    variant="outline-danger"
+                                    type="button"
+                                    title="Очистить выбор"
+                                    onClick={() => {
+                                        setFile(null);
+                                        if (fileInputRef.current) fileInputRef.current.value = "";
+                                    }}
+                                >
+                                    ✕
+                                </Button>
+                            )}
+                        </div>
+
+                        <Form.Text className="text-muted d-block mt-2">
                             {isEditMode
                                 ? "Прикрепите новый файл, только если хотите заменить ранее загруженный."
                                 : "Принимается только один файл форматов .pdf или .pptx."}
