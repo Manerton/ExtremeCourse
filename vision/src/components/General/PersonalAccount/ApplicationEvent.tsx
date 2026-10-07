@@ -308,6 +308,7 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                     }}
                     applicationId={activeApp.id}
                     programName={activeApp.name}
+                    subjectName={(activeApp as any).subject || activeApp.name.replace(/^Олимпиадная\s+/i, "")}
                     classParticipation={activeApp.class_participation}
                     token={accessToken!}
                     existingPortfolio={portfolios[activeApp.id]}

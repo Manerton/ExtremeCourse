@@ -28,8 +28,8 @@ export const ACHIEVEMENT_SCORES: Record<AchievementType, number> = {
     [Achievement.VsoshMunPrizeWinner]: 10,
     [Achievement.VsoshRegWinner]: 40,
     [Achievement.VsoshRegPrizeWinner]: 20,
-    [Achievement.MinobrListWinner]: 20,
-    [Achievement.MinobrListPrizeWinner]: 10,
+    [Achievement.MinobrListWinner]: 40,
+    [Achievement.MinobrListPrizeWinner]: 20,
     [Achievement.MathMunWinner]: 20,
     [Achievement.MathMunPrizeWinner]: 10,
     [Achievement.MathRegWinner]: 40,
@@ -41,9 +41,11 @@ export interface PortfolioData {
     id?: string;
     application_id: string;
     description: string;
-    achievements: AchievementType[];
+    score?: number;
+    code_achievement?: AchievementType[];
+    achievements?: AchievementType[]; // для обратной совместимости
+    file_path?: string;
     file_url?: string;
-    file_name?: string;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -93,15 +95,24 @@ export async function axiosUpdatePortfolio(
     token: string,
     applicationId: string,
     description: string,
-    achievements: AchievementType[]
+    achievements: AchievementType[],
+    file?: File | null
 ) {
+    const formData = new FormData();
+    formData.append("description", description);
+    achievements.forEach((ach) => formData.append("achievements", ach));
+
+    if (file) {
+        formData.append("file", file);
+    }
+
     const res = await axios.patch(
         `${PORTFOLIO_API}/${applicationId}/portfolio`,
-        { description, achievements },
+        formData,
         {
             headers: {
                 Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
+                "Content-Type": "multipart/form-data",
             },
             withCredentials: true,
         }

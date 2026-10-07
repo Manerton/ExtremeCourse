@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Modal, Button, Form, Alert } from "react-bootstrap";
+import React, { useState, useEffect, useRef } from "react";
+import { Modal, Button, Form, Alert, Badge } from "react-bootstrap";
 import {
     Achievement,
     AchievementType,
@@ -7,19 +7,20 @@ import {
     axiosUploadPortfolio,
     axiosUpdatePortfolio,
 } from "../../../requests/PortfolioRequests";
+import { BsBoxArrowUpRight } from "react-icons/bs";
 
 interface Props {
     show: boolean;
     onHide: () => void;
     applicationId: string;
     programName: string;
+    subjectName: string; // Новое поле: название предмета (например, "Математика", "Физика", "Экономика")
     classParticipation: number;
     token: string;
     existingPortfolio?: PortfolioData | null;
     onSuccess: () => void;
 }
 
-// Карты взаимоисключающих достижений (Победитель <-> Призёр одного этапа)
 const CONFLICT_PAIRS: Record<AchievementType, AchievementType> = {
     [Achievement.VsoshMunWinner]: Achievement.VsoshMunPrizeWinner,
     [Achievement.VsoshMunPrizeWinner]: Achievement.VsoshMunWinner,
@@ -43,11 +44,25 @@ const CONFLICT_PAIRS: Record<AchievementType, AchievementType> = {
     [Achievement.MathRegPrizeWinner]: Achievement.MathRegWinner,
 };
 
+// Функция склонения названия предмета для фразы "по ..."
+function getSubjectDative(subject: string): string {
+    const s = subject.trim().toLowerCase();
+    if (s.includes("матем")) return "математике";
+    if (s.includes("физик")) return "физике";
+    if (s.includes("хим")) return "химии";
+    if (s.includes("биолог")) return "биологии";
+    if (s.includes("информ")) return "информатике";
+    if (s.includes("эконом")) return "экономике";
+    if (s.endsWith("а") || s.endsWith("я")) return s.slice(0, -1) + "е";
+    return subject;
+}
+
 const PortfolioModal: React.FC<Props> = ({
                                              show,
                                              onHide,
                                              applicationId,
                                              programName,
+                                             subjectName,
                                              classParticipation,
                                              token,
                                              existingPortfolio,
@@ -59,18 +74,27 @@ const PortfolioModal: React.FC<Props> = ({
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const isEditMode = Boolean(existingPortfolio);
-    const lowerName = programName.toLowerCase();
+    const lowerName = (programName + " " + subjectName).toLowerCase();
 
     const isMath = lowerName.includes("матем");
     const isPhysics = lowerName.includes("физик");
     const isEconomics = lowerName.includes("эконом");
     const isSeniorClass = classParticipation >= 10 || isEconomics;
 
+    // Склоненное название дисциплины, например: "математике"
+    const subjectDative = getSubjectDative(subjectName || "соответствующей дисциплине");
+
     useEffect(() => {
         if (existingPortfolio) {
             setDescription(existingPortfolio.description || "");
-            setSelectedAchievements(existingPortfolio.achievements || []);
+            const achievementsList =
+                existingPortfolio.code_achievement ||
+                existingPortfolio.achievements ||
+                [];
+            setSelectedAchievements(achievementsList);
         } else {
             setDescription("");
             setSelectedAchievements([]);
@@ -79,7 +103,6 @@ const PortfolioModal: React.FC<Props> = ({
         setError(null);
     }, [existingPortfolio, show]);
 
-    // Взаимное исключение: при выборе одной роли в этапе парная роль автоматически отключается
     const handleCheckboxToggle = (code: AchievementType) => {
         setSelectedAchievements((prev) => {
             if (prev.includes(code)) {
@@ -117,13 +140,8 @@ const PortfolioModal: React.FC<Props> = ({
         e.preventDefault();
         setError(null);
 
-        if (!description.trim()) {
-            setError("Укажите описание портфолио.");
-            return;
-        }
-
         if (selectedAchievements.length === 0) {
-            setError("Выберите хотя бы одно достижение.");
+            setError("Пожалуйста, отметьте хотя бы одно достижение.");
             return;
         }
 
@@ -134,16 +152,25 @@ const PortfolioModal: React.FC<Props> = ({
 
         try {
             setSubmitting(true);
+
             if (isEditMode) {
-                // Если при редактировании прикреплен новый файл, используем upload, иначе обновляем текстовые данные
-                if (file) {
-                    await axiosUploadPortfolio(token, applicationId, description, selectedAchievements, file);
-                } else {
-                    await axiosUpdatePortfolio(token, applicationId, description, selectedAchievements);
-                }
+                await axiosUpdatePortfolio(
+                    token,
+                    applicationId,
+                    description,
+                    selectedAchievements,
+                    file
+                );
             } else {
-                await axiosUploadPortfolio(token, applicationId, description, selectedAchievements, file!);
+                await axiosUploadPortfolio(
+                    token,
+                    applicationId,
+                    description,
+                    selectedAchievements,
+                    file!
+                );
             }
+
             onSuccess();
             onHide();
         } catch (err: any) {
@@ -164,175 +191,272 @@ const PortfolioModal: React.FC<Props> = ({
                 <Modal.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
 
-                    <Form.Group className="mb-4">
-                        <Form.Label className="d-block mb-2">
-                            <strong>Виды индивидуальных достижений:</strong>
+                    <div className="mb-4">
+                        <Form.Label className="d-block mb-3 fw-bold fs-6">
+                            Индивидуальные достижения участника:
                         </Form.Label>
 
-                        {/* Базовые достижения: Муниципальный этап ВсОШ */}
-                        <div className="mb-2">
-                            <Form.Check
-                                type="checkbox"
-                                id="ach-vsosh-win"
-                                label="Победитель муниципального этапа ВсОШ по соответствующей дисциплине"
-                                checked={selectedAchievements.includes(Achievement.VsoshMunWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunWinner)}
-                            />
-                            <Form.Check
-                                type="checkbox"
-                                id="ach-vsosh-prize"
-                                label="Призёр муниципального этапа ВсОШ по соответствующей дисциплине"
-                                checked={selectedAchievements.includes(Achievement.VsoshMunPrizeWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunPrizeWinner)}
-                            />
-                        </div>
-
-                        {/* Региональный этап ВсОШ (10-11 классы) */}
+                        {/* 1. Региональный этап ВсОШ (10-11 классы) */}
                         {isSeniorClass && (
-                            <div className="mb-2">
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="info" className="me-2 text-dark">ВсОШ</Badge>
+                                    <span className="fw-bold text-dark">
+                    Региональный этап (10–11 классы) ({subjectName})
+                </span>
+                                </div>
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-vsosh-reg-win"
-                                    label="Победитель регионального этапа ВсОШ по соответствующей дисциплине"
+                                    className="mb-2"
+                                    label={`Победитель регионального этапа ВсОШ по ${subjectDative} за 2025–2026 уч. год`}
                                     checked={selectedAchievements.includes(Achievement.VsoshRegWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.VsoshRegWinner)}
                                 />
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-vsosh-reg-prize"
-                                    label="Призёр регионального этапа ВсОШ по соответствующей дисциплине"
+                                    label={`Призёр регионального этапа ВсОШ по ${subjectDative} за 2025–2026 уч. год`}
                                     checked={selectedAchievements.includes(Achievement.VsoshRegPrizeWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.VsoshRegPrizeWinner)}
                                 />
                             </div>
                         )}
 
-                        {/* Перечневые олимпиады */}
-                        <div className="mb-2">
+                        {/* 2. Базовый блок: Муниципальный этап ВсОШ */}
+                        <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                            <div className="d-flex align-items-center mb-2">
+                                <Badge bg="primary" className="me-2">ВсОШ</Badge>
+                                <span className="fw-bold text-dark">
+                Муниципальный этап ({subjectName})
+            </span>
+                            </div>
                             <Form.Check
                                 type="checkbox"
-                                id="ach-minobr-win"
-                                label="Победитель олимпиад из перечня Минпросвещения РФ по соответствующей дисциплине"
-                                checked={selectedAchievements.includes(Achievement.MinobrListWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.MinobrListWinner)}
+                                id="ach-vsosh-win"
+                                className="mb-2"
+                                label={`Победитель муниципального этапа ВсОШ по ${subjectDative} за 2025–2026 уч. год`}
+                                checked={selectedAchievements.includes(Achievement.VsoshMunWinner)}
+                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunWinner)}
                             />
                             <Form.Check
                                 type="checkbox"
-                                id="ach-minobr-prize"
-                                label="Призёр олимпиад из перечня Минпросвещения РФ по соответствующей дисциплине"
-                                checked={selectedAchievements.includes(Achievement.MinobrListPrizeWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.MinobrListPrizeWinner)}
+                                id="ach-vsosh-prize"
+                                label={`Призёр муниципального этапа ВсОШ по ${subjectDative} за 2025–2026 уч. год`}
+                                checked={selectedAchievements.includes(Achievement.VsoshMunPrizeWinner)}
+                                onChange={() => handleCheckboxToggle(Achievement.VsoshMunPrizeWinner)}
                             />
                         </div>
 
-                        {/* Олимпиада Эйлера (математика) */}
-                        {isMath && (
-                            <div className="mt-3 pt-2 border-top">
-                                <span className="text-muted d-block mb-1 small fw-bold">
-                                    Олимпиада им. Леонарда Эйлера:
-                                </span>
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-euler-win"
-                                    label="Победитель олимпиады им. Леонарда Эйлера"
-                                    checked={selectedAchievements.includes(Achievement.EulerWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.EulerWinner)}
-                                />
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-euler-prize"
-                                    label="Призёр олимпиады им. Леонарда Эйлера"
-                                    checked={selectedAchievements.includes(Achievement.EulerPrizeWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.EulerPrizeWinner)}
-                                />
-                            </div>
-                        )}
-
-                        {/* Олимпиада Максвелла (физика) */}
-                        {isPhysics && (
-                            <div className="mt-3 pt-2 border-top">
-                                <span className="text-muted d-block mb-1 small fw-bold">
-                                    Олимпиада им. Дж. Кл. Максвелла:
-                                </span>
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-maxwell-win"
-                                    label="Победитель олимпиады им. Дж. Кл. Максвелла"
-                                    checked={selectedAchievements.includes(Achievement.MaxwellWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellWinner)}
-                                />
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-maxwell-prize"
-                                    label="Призёр олимпиады им. Дж. Кл. Максвелла"
-                                    checked={selectedAchievements.includes(Achievement.MaxwellPrizeWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellPrizeWinner)}
-                                />
-                            </div>
-                        )}
-
-                        {/* Результаты по математике (экономика) */}
+                        {/* 3. Достижения ВсОШ по математике (Региональный) для экономики */}
                         {isEconomics && (
-                            <div className="mt-3 pt-2 border-top">
-                                <span className="text-muted d-block mb-1 small fw-bold">
-                                    Результаты ВсОШ по математике:
-                                </span>
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-math-mun-win"
-                                    label="Победитель муниципального этапа ВсОШ по математике"
-                                    checked={selectedAchievements.includes(Achievement.MathMunWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MathMunWinner)}
-                                />
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-math-mun-prize"
-                                    label="Призёр муниципального этапа ВсОШ по математике"
-                                    checked={selectedAchievements.includes(Achievement.MathMunPrizeWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MathMunPrizeWinner)}
-                                />
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">ВсОШ</Badge>
+                                    <span className="fw-bold text-dark">
+                    Региональный этап по математике (10–11 классы)
+                </span>
+                                </div>
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-math-reg-win"
-                                    label="Победитель регионального этапа ВсОШ по математике"
+                                    className="mb-2"
+                                    label="Победитель регионального этапа ВсОШ по математике за 2025–2026 уч. год"
                                     checked={selectedAchievements.includes(Achievement.MathRegWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.MathRegWinner)}
                                 />
                                 <Form.Check
                                     type="checkbox"
                                     id="ach-math-reg-prize"
-                                    label="Призёр регионального этапа ВсОШ по математике"
+                                    label="Призёр регионального этапа ВсОШ по математике за 2025–2026 уч. год"
                                     checked={selectedAchievements.includes(Achievement.MathRegPrizeWinner)}
                                     onChange={() => handleCheckboxToggle(Achievement.MathRegPrizeWinner)}
                                 />
                             </div>
                         )}
-                    </Form.Group>
 
-                    <Form.Group className="mb-3">
-                        <Form.Label><strong>Описание портфолио:</strong></Form.Label>
+                        {/* 4. Достижения ВсОШ по математике (Муниципальный) для экономики */}
+                        {isEconomics && (
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="dark" className="me-2">ВсОШ</Badge>
+                                    <span className="fw-bold text-dark">
+                    Муниципальный этап по математике
+                </span>
+                                </div>
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-math-mun-win"
+                                    className="mb-2"
+                                    label="Победитель муниципального этапа ВсОШ по математике за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.MathMunWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MathMunWinner)}
+                                />
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-math-mun-prize"
+                                    label="Призёр муниципального этапа ВсОШ по математике за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.MathMunPrizeWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MathMunPrizeWinner)}
+                                />
+                            </div>
+                        )}
+
+                        {/* 5. Перечневые олимпиады с вынесенной ссылкой справа */}
+                        <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div className="d-flex align-items-center">
+                                    <Badge bg="success" className="me-2">Минобрнауки</Badge>
+                                    <span className="fw-bold text-dark">
+                    Олимпиады из перечня Минобрнауки
+                </span>
+                                </div>
+                                <a
+                                    href="https://base.garant.ru/412793733/"
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    className="btn btn-outline-success btn-sm py-0 px-2 d-inline-flex align-items-center"
+                                    title="Перейти к официальному перечню на Гарант.ру"
+                                >
+                                    Перейти к перечню
+                                    <BsBoxArrowUpRight className="ms-1" size={11} />
+                                </a>
+                            </div>
+                            <Form.Check
+                                type="checkbox"
+                                id="ach-minobr-win"
+                                className="mb-2"
+                                label="Победитель олимпиад из перечня Минобрнауки за 2025–2026 уч. год"
+                                checked={selectedAchievements.includes(Achievement.MinobrListWinner)}
+                                onChange={() => handleCheckboxToggle(Achievement.MinobrListWinner)}
+                            />
+                            <Form.Check
+                                type="checkbox"
+                                id="ach-minobr-prize"
+                                label="Призёр олимпиад из перечня Минобрнауки за 2025–2026 уч. год"
+                                checked={selectedAchievements.includes(Achievement.MinobrListPrizeWinner)}
+                                onChange={() => handleCheckboxToggle(Achievement.MinobrListPrizeWinner)}
+                            />
+                        </div>
+
+                        {/* 6. Олимпиада Эйлера (математика) */}
+                        {isMath && (
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">Математика</Badge>
+                                    <span className="fw-bold text-dark">
+                    Олимпиада им. Леонарда Эйлера
+                </span>
+                                </div>
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-euler-win"
+                                    className="mb-2"
+                                    label="Победитель олимпиады им. Леонарда Эйлера за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.EulerWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.EulerWinner)}
+                                />
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-euler-prize"
+                                    label="Призёр олимпиады им. Леонарда Эйлера за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.EulerPrizeWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.EulerPrizeWinner)}
+                                />
+                            </div>
+                        )}
+
+                        {/* 7. Олимпиада Максвелла (физика) */}
+                        {isPhysics && (
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">Физика</Badge>
+                                    <span className="fw-bold text-dark">
+                    Олимпиада им. Дж. Кл. Максвелла
+                </span>
+                                </div>
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-maxwell-win"
+                                    className="mb-2"
+                                    label="Победитель олимпиады им. Дж. Кл. Максвелла за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.MaxwellWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellWinner)}
+                                />
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-maxwell-prize"
+                                    label="Призёр олимпиады им. Дж. Кл. Максвелла за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.MaxwellPrizeWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellPrizeWinner)}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Описание портфолио */}
+                    <Form.Group className="mb-4">
+                        <Form.Label>
+                            <strong>Описание портфолио <span className="text-muted fw-normal">(необязательно):</span></strong>
+                        </Form.Label>
                         <Form.Control
                             as="textarea"
                             rows={3}
                             placeholder="Опишите ваши грамоты, успехи или дайте пояснения к прикрепленным файлам..."
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            required
                         />
                     </Form.Group>
 
-                    {/* Поле файла: обязательно при создании, опционально при редактировании */}
+                    {/* Поле файла */}
                     <Form.Group className="mb-3">
-                        <Form.Label>
-                            <strong>Файл портфолио (.pdf, .pptx):</strong>
+                        <Form.Label className="d-block mb-1">
+                            <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
+                            {!isEditMode && <span className="text-danger ms-1">*</span>}
                         </Form.Label>
-                        <Form.Control
+
+                        {isEditMode && existingPortfolio?.file_path && (
+                            <div className="small text-success mb-2 p-2 bg-success-subtle border border-success-subtle rounded">
+                                ✓ Уже загружен файл: <code>{existingPortfolio.file_path.split("/").pop()}</code>
+                            </div>
+                        )}
+
+                        <input
+                            ref={fileInputRef}
                             type="file"
+                            className="d-none"
                             accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                             onChange={handleFileChange}
-                            required={!isEditMode}
                         />
-                        <Form.Text className="text-muted d-block mt-1">
+
+                        <div className="input-group">
+                            <Button
+                                variant="outline-primary"
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <i className="bi bi-paperclip me-1"></i>
+                                {file ? "Заменить файл" : "Выбрать файл"}
+                            </Button>
+                            <span className="form-control text-truncate bg-white text-muted">
+                                {file ? file.name : "Файл не выбран"}
+                            </span>
+                            {file && (
+                                <Button
+                                    variant="outline-danger"
+                                    type="button"
+                                    title="Очистить выбор"
+                                    onClick={() => {
+                                        setFile(null);
+                                        if (fileInputRef.current) fileInputRef.current.value = "";
+                                    }}
+                                >
+                                    ✕
+                                </Button>
+                            )}
+                        </div>
+
+                        <Form.Text className="text-muted d-block mt-2">
                             {isEditMode
                                 ? "Прикрепите новый файл, только если хотите заменить ранее загруженный."
                                 : "Принимается только один файл форматов .pdf или .pptx."}
