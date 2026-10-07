@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Modal, Button, Form, Alert, Badge } from "react-bootstrap";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Modal, Button, Form, Alert, Badge, InputGroup } from "react-bootstrap";
 import {
     Achievement,
     AchievementType,
     PortfolioData,
     axiosUploadPortfolio,
     axiosUpdatePortfolio,
+    MINOBR_OLYMPIADS,
+    SubjectCode,
 } from "../../../requests/PortfolioRequests";
-import { BsBoxArrowUpRight, BsInfoCircle } from "react-icons/bs";
+import { BsBoxArrowUpRight, BsInfoCircle, BsSearch, BsX } from "react-icons/bs";
 
 interface Props {
     show: boolean;
@@ -21,15 +23,12 @@ interface Props {
     onSuccess: () => void;
 }
 
-const CONFLICT_PAIRS: Record<AchievementType, AchievementType> = {
+const BASE_CONFLICT_PAIRS: Record<string, AchievementType> = {
     [Achievement.VsoshMunWinner]: Achievement.VsoshMunPrizeWinner,
     [Achievement.VsoshMunPrizeWinner]: Achievement.VsoshMunWinner,
 
     [Achievement.VsoshRegWinner]: Achievement.VsoshRegPrizeWinner,
     [Achievement.VsoshRegPrizeWinner]: Achievement.VsoshRegWinner,
-
-    [Achievement.MinobrListWinner]: Achievement.MinobrListPrizeWinner,
-    [Achievement.MinobrListPrizeWinner]: Achievement.MinobrListWinner,
 
     [Achievement.EulerWinner]: Achievement.EulerPrizeWinner,
     [Achievement.EulerPrizeWinner]: Achievement.EulerWinner,
@@ -43,6 +42,22 @@ const CONFLICT_PAIRS: Record<AchievementType, AchievementType> = {
     [Achievement.MathRegWinner]: Achievement.MathRegPrizeWinner,
     [Achievement.MathRegPrizeWinner]: Achievement.MathRegWinner,
 };
+
+MINOBR_OLYMPIADS.forEach((item) => {
+    BASE_CONFLICT_PAIRS[item.winnerCode] = item.prizeCode;
+    BASE_CONFLICT_PAIRS[item.prizeCode] = item.winnerCode;
+});
+
+function getSubjectCode(name: string): SubjectCode | null {
+    const s = name.toLowerCase();
+    if (s.includes("матем")) return "MATHEMATICS";
+    if (s.includes("физик")) return "PHYSICS";
+    if (s.includes("биолог")) return "BIOLOGY";
+    if (s.includes("эконом")) return "ECONOMICS";
+    if (s.includes("хим")) return "CHEMISTRY";
+    if (s.includes("информ") || s.includes("програм")) return "INFORMATICS";
+    return null;
+}
 
 function getSubjectDative(subject: string): string {
     const s = subject.trim().toLowerCase();
@@ -73,6 +88,10 @@ const PortfolioModal: React.FC<Props> = ({
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
+    // Поиск и флаг отображения всех предметов
+    const [minobrSearch, setMinobrSearch] = useState("");
+    const [showAllSubjects, setShowAllSubjects] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isEditMode = Boolean(existingPortfolio);
@@ -83,6 +102,7 @@ const PortfolioModal: React.FC<Props> = ({
     const isEconomics = lowerName.includes("эконом");
     const isSeniorClass = classParticipation >= 10 || isEconomics;
 
+    const currentSubjectCode = getSubjectCode(subjectName || programName);
     const subjectDative = getSubjectDative(subjectName || "соответствующей дисциплине");
 
     useEffect(() => {
@@ -98,6 +118,8 @@ const PortfolioModal: React.FC<Props> = ({
             setSelectedAchievements([]);
             setFile(null);
         }
+        setMinobrSearch("");
+        setShowAllSubjects(false);
         setError(null);
     }, [existingPortfolio, show]);
 
@@ -106,11 +128,42 @@ const PortfolioModal: React.FC<Props> = ({
             if (prev.includes(code)) {
                 return prev.filter((c) => c !== code);
             }
-            const conflictingCode = CONFLICT_PAIRS[code];
+            const conflictingCode = BASE_CONFLICT_PAIRS[code];
             const filtered = conflictingCode ? prev.filter((c) => c !== conflictingCode) : prev;
             return [...filtered, code];
         });
     };
+
+    // Сортировка и фильтрация: подходящие под текущий предмет олимпиады идут первыми
+    const filteredMinobrOlympiads = useMemo(() => {
+        const query = minobrSearch.trim().toLowerCase();
+
+        return MINOBR_OLYMPIADS.filter((item) => {
+            if (!showAllSubjects && currentSubjectCode && !query) {
+                const isSelected =
+                    selectedAchievements.includes(item.winnerCode) ||
+                    selectedAchievements.includes(item.prizeCode);
+                if (!item.subjects.includes(currentSubjectCode) && !isSelected) {
+                    return false;
+                }
+            }
+
+            if (query) {
+                const matchesText =
+                    item.name.toLowerCase().includes(query) ||
+                    item.id.toString().includes(query);
+                if (!matchesText) return false;
+            }
+
+            return true;
+        });
+    }, [minobrSearch, showAllSubjects, currentSubjectCode, selectedAchievements]);
+
+    const selectedMinobrCount = useMemo(() => {
+        return MINOBR_OLYMPIADS.filter(
+            (o) => selectedAchievements.includes(o.winnerCode) || selectedAchievements.includes(o.prizeCode)
+        ).length;
+    }, [selectedAchievements]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -189,7 +242,7 @@ const PortfolioModal: React.FC<Props> = ({
                 <Modal.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
 
-                    {/* Блок-подсказка */}
+                    {/* Подсказка участнику */}
                     <Alert variant="warning" className="d-flex align-items-start gap-2 mb-3 shadow-sm border-warning">
                         <BsInfoCircle size={22} className="flex-shrink-0 mt-1 text-warning-emphasis" />
                         <div className="small">
@@ -231,7 +284,7 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
-                        {/* 2. Базовый блок: Муниципальный этап ВсОШ */}
+                        {/* 2. Муниципальный этап ВсОШ */}
                         <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                             <div className="d-flex align-items-center mb-2">
                                 <Badge bg="primary" className="me-2">ВсОШ</Badge>
@@ -256,7 +309,7 @@ const PortfolioModal: React.FC<Props> = ({
                             />
                         </div>
 
-                        {/* 3. Достижения ВсОШ по математике (Региональный) для экономики */}
+                        {/* 3. Результаты по математике для экономики (Региональный) */}
                         {isEconomics && (
                             <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                                 <div className="d-flex align-items-center mb-2">
@@ -283,7 +336,7 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
-                        {/* 4. Достижения ВсОШ по математике (Муниципальный) для экономики */}
+                        {/* 4. Результаты по математике для экономики (Муниципальный) */}
                         {isEconomics && (
                             <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                                 <div className="d-flex align-items-center mb-2">
@@ -310,7 +363,26 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
-                        {/* 5. Перечневые олимпиады */}
+                        {/* 5. НОВАЯ СЕКЦИЯ: Образовательный центр Сириус */}
+                        <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                            <div className="d-flex align-items-center mb-2">
+                                <Badge bg="primary" className="me-2" style={{ backgroundColor: "#0066cc" }}>
+                                    Сириус
+                                </Badge>
+                                <span className="fw-bold text-dark">
+                                    Образовательный центр «Сириус»
+                                </span>
+                            </div>
+                            <Form.Check
+                                type="checkbox"
+                                id="ach-sirius-participant"
+                                label="Участие в профильной смене в образовательном центре Сириус за 2024–2026 уч. год"
+                                checked={selectedAchievements.includes(Achievement.SiriusParticipant)}
+                                onChange={() => handleCheckboxToggle(Achievement.SiriusParticipant)}
+                            />
+                        </div>
+
+                        {/* 6. Перечневые олимпиады Минобрнауки с фильтрацией по предмету */}
                         <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                             <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                 <div className="d-flex align-items-center">
@@ -318,6 +390,11 @@ const PortfolioModal: React.FC<Props> = ({
                                     <span className="fw-bold text-dark">
                                         Олимпиады из перечня Минобрнауки
                                     </span>
+                                    {selectedMinobrCount > 0 && (
+                                        <Badge bg="primary" pill className="ms-2">
+                                            Выбрано: {selectedMinobrCount}
+                                        </Badge>
+                                    )}
                                 </div>
                                 <a
                                     href="https://base.garant.ru/412793733/"
@@ -330,24 +407,103 @@ const PortfolioModal: React.FC<Props> = ({
                                     <BsBoxArrowUpRight className="ms-1" size={11} />
                                 </a>
                             </div>
-                            <Form.Check
-                                type="checkbox"
-                                id="ach-minobr-win"
-                                className="mb-2"
-                                label="Победитель олимпиад из перечня Минобрнауки за 2025–2026 уч. год"
-                                checked={selectedAchievements.includes(Achievement.MinobrListWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.MinobrListWinner)}
-                            />
-                            <Form.Check
-                                type="checkbox"
-                                id="ach-minobr-prize"
-                                label="Призёр олимпиад из перечня Минобрнауки за 2025–2026 уч. год"
-                                checked={selectedAchievements.includes(Achievement.MinobrListPrizeWinner)}
-                                onChange={() => handleCheckboxToggle(Achievement.MinobrListPrizeWinner)}
-                            />
+
+                            {/* Поле поиска и переключатель профилей */}
+                            <div className="mb-2">
+                                <InputGroup size="sm">
+                                    <InputGroup.Text className="bg-white">
+                                        <BsSearch className="text-muted" />
+                                    </InputGroup.Text>
+                                    <Form.Control
+                                        type="text"
+                                        placeholder="Поиск по названию олимпиады..."
+                                        value={minobrSearch}
+                                        onChange={(e) => setMinobrSearch(e.target.value)}
+                                    />
+                                    {minobrSearch && (
+                                        <Button
+                                            variant="outline-secondary"
+                                            onClick={() => setMinobrSearch("")}
+                                            title="Очистить поиск"
+                                        >
+                                            <BsX size={18} />
+                                        </Button>
+                                    )}
+                                </InputGroup>
+
+                                {currentSubjectCode && (
+                                    <div className="mt-2 d-flex justify-content-between align-items-center">
+                                        <Form.Check
+                                            type="switch"
+                                            id="toggle-all-subjects"
+                                            className="small text-muted"
+                                            label="Показать олимпиады по всем дисциплинам"
+                                            checked={showAllSubjects}
+                                            onChange={(e) => setShowAllSubjects(e.target.checked)}
+                                        />
+                                        <span className="small text-muted">
+                                            {showAllSubjects
+                                                ? "Все профили"
+                                                : `Только профиль: ${subjectName || "текущий"}`}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Прокручиваемый список олимпиад */}
+                            <div
+                                className="bg-white border rounded p-2"
+                                style={{ maxHeight: "320px", overflowY: "auto" }}
+                            >
+                                {filteredMinobrOlympiads.length === 0 ? (
+                                    <div className="text-center text-muted py-3 small">
+                                        Олимпиады по данному запросу не найдены
+                                    </div>
+                                ) : (
+                                    filteredMinobrOlympiads.map((item) => {
+                                        const isWinnerChecked = selectedAchievements.includes(item.winnerCode);
+                                        const isPrizeChecked = selectedAchievements.includes(item.prizeCode);
+                                        const hasSelection = isWinnerChecked || isPrizeChecked;
+
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className={`p-2 mb-2 rounded border transition-all ${
+                                                    hasSelection
+                                                        ? "bg-success-subtle border-success"
+                                                        : "bg-light border-light-subtle"
+                                                }`}
+                                            >
+                                                <div className="fw-semibold small text-dark mb-1">
+                                                    <span className="text-muted me-1">№{item.id}</span>
+                                                    {item.name}
+                                                </div>
+                                                <div className="d-flex flex-wrap gap-3 ms-2">
+                                                    <Form.Check
+                                                        type="checkbox"
+                                                        id={`minobr-win-${item.id}`}
+                                                        label="Победитель"
+                                                        className="small"
+                                                        checked={isWinnerChecked}
+                                                        onChange={() => handleCheckboxToggle(item.winnerCode)}
+                                                    />
+                                                    <Form.Check
+                                                        type="checkbox"
+                                                        id={`minobr-prize-${item.id}`}
+                                                        label="Призёр"
+                                                        className="small"
+                                                        checked={isPrizeChecked}
+                                                        onChange={() => handleCheckboxToggle(item.prizeCode)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
                         </div>
 
-                        {/* 6. Олимпиада Эйлера (математика) */}
+                        {/* 7. Олимпиада Эйлера (математика) */}
                         {isMath && (
                             <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                                 <div className="d-flex align-items-center mb-2">
@@ -374,7 +530,7 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
-                        {/* 7. Олимпиада Максвелла (физика) */}
+                        {/* 8. Олимпиада Максвелла (физика) */}
                         {isPhysics && (
                             <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                                 <div className="d-flex align-items-center mb-2">
