@@ -18,6 +18,7 @@ const (
 	AchievementMathMunPrizeWinner    AchievementType = "MATH_MUN_PRIZE_WINNER"
 	AchievementMathRegWinner         AchievementType = "MATH_REG_WINNER"
 	AchievementMathRegPrizeWinner    AchievementType = "MATH_REG_PRIZE_WINNER"
+	SiriusParticipant                AchievementType = "SIRIUS_PARTICIPANT"
 )
 
 // Олимпиады из Перечня Минобрнауки по профилям: Математика, Физика, Биология, Экономика, Химия, Информатика
@@ -210,6 +211,7 @@ var AchievementRegistry = map[AchievementType]AchievementInfo{
 	AchievementMathMunPrizeWinner:    {Score: 10, OlympiadName: "Муниципальная олимпиада по математике"},
 	AchievementMathRegWinner:         {Score: 40, OlympiadName: "Региональная олимпиада по математике"},
 	AchievementMathRegPrizeWinner:    {Score: 20, OlympiadName: "Региональная олимпиада по математике"},
+	SiriusParticipant:                {Score: 20, OlympiadName: "Участие в профильной смене в образовательном центре Сириус"},
 
 	// 52 перечневые олимпиады
 	AchievementFinatlonWinner:                  {Score: 40, OlympiadName: "\"Финатлон для старшеклассников\" - Всероссийская олимпиада по финансовой грамотности, устойчивому развитию и защите прав потребителей финансовых услуг"},
