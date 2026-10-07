@@ -7,14 +7,14 @@ import {
     axiosUploadPortfolio,
     axiosUpdatePortfolio,
 } from "../../../requests/PortfolioRequests";
-import { BsBoxArrowUpRight } from "react-icons/bs";
+import { BsBoxArrowUpRight, BsInfoCircle } from "react-icons/bs";
 
 interface Props {
     show: boolean;
     onHide: () => void;
     applicationId: string;
     programName: string;
-    subjectName: string; // Новое поле: название предмета (например, "Математика", "Физика", "Экономика")
+    subjectName: string;
     classParticipation: number;
     token: string;
     existingPortfolio?: PortfolioData | null;
@@ -44,7 +44,6 @@ const CONFLICT_PAIRS: Record<AchievementType, AchievementType> = {
     [Achievement.MathRegPrizeWinner]: Achievement.MathRegWinner,
 };
 
-// Функция склонения названия предмета для фразы "по ..."
 function getSubjectDative(subject: string): string {
     const s = subject.trim().toLowerCase();
     if (s.includes("матем")) return "математике";
@@ -84,7 +83,6 @@ const PortfolioModal: React.FC<Props> = ({
     const isEconomics = lowerName.includes("эконом");
     const isSeniorClass = classParticipation >= 10 || isEconomics;
 
-    // Склоненное название дисциплины, например: "математике"
     const subjectDative = getSubjectDative(subjectName || "соответствующей дисциплине");
 
     useEffect(() => {
@@ -191,6 +189,16 @@ const PortfolioModal: React.FC<Props> = ({
                 <Modal.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
 
+                    {/* Блок-подсказка */}
+                    <Alert variant="warning" className="d-flex align-items-start gap-2 mb-3 shadow-sm border-warning">
+                        <BsInfoCircle size={22} className="flex-shrink-0 mt-1 text-warning-emphasis" />
+                        <div className="small">
+                            <strong>Обратите внимание:</strong> если у вас есть результаты в нескольких олимпиадах или этапах,
+                            обязательно <u>отметьте их во всех соответствующих категориях ниже</u>.
+                            Неотмеченные пункты <strong>не будут учтены</strong> при формировании рейтинга!
+                        </div>
+                    </Alert>
+
                     <div className="mb-4">
                         <Form.Label className="d-block mb-3 fw-bold fs-6">
                             Индивидуальные достижения участника:
@@ -202,8 +210,8 @@ const PortfolioModal: React.FC<Props> = ({
                                 <div className="d-flex align-items-center mb-2">
                                     <Badge bg="info" className="me-2 text-dark">ВсОШ</Badge>
                                     <span className="fw-bold text-dark">
-                    Региональный этап (10–11 классы) ({subjectName})
-                </span>
+                                        Региональный этап (10–11 классы) ({subjectName})
+                                    </span>
                                 </div>
                                 <Form.Check
                                     type="checkbox"
@@ -228,8 +236,8 @@ const PortfolioModal: React.FC<Props> = ({
                             <div className="d-flex align-items-center mb-2">
                                 <Badge bg="primary" className="me-2">ВсОШ</Badge>
                                 <span className="fw-bold text-dark">
-                Муниципальный этап ({subjectName})
-            </span>
+                                    Муниципальный этап ({subjectName})
+                                </span>
                             </div>
                             <Form.Check
                                 type="checkbox"
@@ -254,8 +262,8 @@ const PortfolioModal: React.FC<Props> = ({
                                 <div className="d-flex align-items-center mb-2">
                                     <Badge bg="warning" className="me-2 text-dark">ВсОШ</Badge>
                                     <span className="fw-bold text-dark">
-                    Региональный этап по математике (10–11 классы)
-                </span>
+                                        Региональный этап по математике (10–11 классы)
+                                    </span>
                                 </div>
                                 <Form.Check
                                     type="checkbox"
@@ -281,8 +289,8 @@ const PortfolioModal: React.FC<Props> = ({
                                 <div className="d-flex align-items-center mb-2">
                                     <Badge bg="dark" className="me-2">ВсОШ</Badge>
                                     <span className="fw-bold text-dark">
-                    Муниципальный этап по математике
-                </span>
+                                        Муниципальный этап по математике
+                                    </span>
                                 </div>
                                 <Form.Check
                                     type="checkbox"
@@ -302,14 +310,14 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
-                        {/* 5. Перечневые олимпиады с вынесенной ссылкой справа */}
+                        {/* 5. Перечневые олимпиады */}
                         <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                             <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                 <div className="d-flex align-items-center">
                                     <Badge bg="success" className="me-2">Минобрнауки</Badge>
                                     <span className="fw-bold text-dark">
-                    Олимпиады из перечня Минобрнауки
-                </span>
+                                        Олимпиады из перечня Минобрнауки
+                                    </span>
                                 </div>
                                 <a
                                     href="https://base.garant.ru/412793733/"
@@ -345,8 +353,8 @@ const PortfolioModal: React.FC<Props> = ({
                                 <div className="d-flex align-items-center mb-2">
                                     <Badge bg="warning" className="me-2 text-dark">Математика</Badge>
                                     <span className="fw-bold text-dark">
-                    Олимпиада им. Леонарда Эйлера
-                </span>
+                                        Олимпиада им. Леонарда Эйлера
+                                    </span>
                                 </div>
                                 <Form.Check
                                     type="checkbox"
@@ -372,8 +380,8 @@ const PortfolioModal: React.FC<Props> = ({
                                 <div className="d-flex align-items-center mb-2">
                                     <Badge bg="warning" className="me-2 text-dark">Физика</Badge>
                                     <span className="fw-bold text-dark">
-                    Олимпиада им. Дж. Кл. Максвелла
-                </span>
+                                        Олимпиада им. Дж. Кл. Максвелла
+                                    </span>
                                 </div>
                                 <Form.Check
                                     type="checkbox"

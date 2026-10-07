@@ -5,6 +5,7 @@ import { Event } from "../../types/event";
 import { fetchSimpleOlympiads } from "../../../requests/EventsRequests";
 import { axiosCreateApplication } from "../../../requests/ApplicationRequests";
 import { Application } from "../../types/application";
+import PortfolioModal from "./PortfolioModal";
 import axios from "axios";
 
 interface Props {
@@ -14,6 +15,13 @@ interface Props {
     onApplied: () => void;
     appliedEventIds: string[];
     hasActiveApplication?: boolean;
+}
+
+interface NewlyCreatedApplicationData {
+    id: string;
+    programName: string;
+    subjectName: string;
+    classParticipation: number;
 }
 
 const OlympiadsSimpleTable: React.FC<Props> = ({
@@ -30,6 +38,11 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
+
+    // Стейты для управления модальным окном портфолио
+    const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+    const [newApplication, setNewApplication] = useState<NewlyCreatedApplicationData | null>(null);
 
     useEffect(() => {
         if (!accessToken) return;
@@ -60,17 +73,35 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
         }
 
         try {
-            const application = {
+            setSubmittingEventId(event.id);
+
+            const applicationPayload = {
                 userId: user?.id.toString(),
                 eventId: event.id,
                 schoolId: user_school_id,
                 class_participation: event.class,
             } as unknown as Application;
 
-            await axiosCreateApplication(accessToken!, application);
+            // 1. Создаем заявку на бэкенде
+            const response = await axiosCreateApplication(accessToken!, applicationPayload);
 
-            alert("Заявка успешно отправлена!");
-            onApplied();
+            // Извлекаем application_id из response.data или response
+            const payload = response?.data ?? response;
+            const applicationId = payload?.application_id || payload?.id;
+
+            if (applicationId) {
+                // 2. Просто открываем окно. Никаких GET-запросов портфолио здесь нет!
+                setNewApplication({
+                    id: applicationId,
+                    programName: event.name,
+                    subjectName: event.subject || event.name.replace(/^Олимпиадная\s+/i, ""),
+                    classParticipation: event.class,
+                });
+                setShowPortfolioModal(true);
+            } else {
+                alert("Заявка создана! Вам необходимо прикрепить портфолио в разделе «Мои заявки».");
+                onApplied();
+            }
         } catch (e: any) {
             console.error("Ошибка при отправке заявки:", e);
 
@@ -92,6 +123,8 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
             const fallbackError = "Произошла ошибка при отправке заявки. Попробуйте позже.";
             setActionError(fallbackError);
             alert(fallbackError);
+        } finally {
+            setSubmittingEventId(null);
         }
     };
 
@@ -109,7 +142,8 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
 
     const renderActionButton = (olymp: Event) => {
         const isTooOld = Boolean(user_class && user_class > olymp.class && !isEconomics(olymp));
-        const isDisabled = hasActiveApplication || isTooOld;
+        const isSubmittingThis = submittingEventId === olymp.id;
+        const isDisabled = hasActiveApplication || isTooOld || Boolean(submittingEventId);
 
         const tooltipText = hasActiveApplication
             ? "У вас уже есть активная заявка. Отзовите её, чтобы выбрать другую программу."
@@ -125,11 +159,13 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                 style={isDisabled ? { pointerEvents: "none" } : undefined}
                 onClick={() => handleSubmit(olymp)}
             >
-                {hasActiveApplication
-                    ? "Недоступно"
-                    : isTooOld
-                        ? "Не для вашего класса"
-                        : "Подать заявку"}
+                {isSubmittingThis
+                    ? "Создание..."
+                    : hasActiveApplication
+                        ? "Недоступно"
+                        : isTooOld
+                            ? "Недоступно"
+                            : "Подать заявку"}
             </Button>
         );
 
@@ -179,7 +215,7 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                     <h4 className="mb-1">Внимание</h4>
                     <p className="mb-0">
                         Пожалуйста, выберите интересующую вас программу и нажмите кнопку
-                        <strong> «Подать заявку»</strong>.
+                        <strong> «Подать заявку»</strong>, после чего откроется форма для прикрепления портфолио.
                     </p>
                 </div>
             </div>
@@ -190,68 +226,88 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                 </div>
             ) : (
                 <>
-                    {/* Версия для ПК и планшетов (MD и выше) */}
+                    {/* Версия для ПК и планшетов */}
                     <div className="table-responsive d-none d-md-block">
                         <Table bordered hover className="align-middle text-center mb-0">
                             <thead>
                             <tr>
                                 <th>Программа</th>
-                                <th>Предмет</th>
                                 <th>Класс</th>
                                 <th style={{ width: "220px" }}>Действие</th>
                             </tr>
                             </thead>
                             <tbody>
-                            {availableOlympiads.map((olymp) => {
-                                const isTooOld = Boolean(user_class && user_class > olymp.class && !isEconomics(olymp));
-                                const isDisabled = hasActiveApplication || isTooOld;
-
-                                return (
-                                    <tr
-                                        key={olymp.id}
-                                        style={{ opacity: isDisabled ? 0.65 : 1 }}
-                                    >
-                                        <td>{olymp.name}</td>
-                                        <td>{olymp.subject}</td>
-                                        <td>{renderClassLabel(olymp)}</td>
-                                        <td>{renderActionButton(olymp)}</td>
-                                    </tr>
-                                );
-                            })}
+                            {availableOlympiads.map((olymp) => (
+                                <tr
+                                    key={olymp.id}
+                                    style={{
+                                        opacity:
+                                            hasActiveApplication ||
+                                            (user_class && user_class > olymp.class && !isEconomics(olymp))
+                                                ? 0.65
+                                                : 1
+                                    }}
+                                >
+                                    <td>{olymp.name}</td>
+                                    <td>{renderClassLabel(olymp)}</td>
+                                    <td>{renderActionButton(olymp)}</td>
+                                </tr>
+                            ))}
                             </tbody>
                         </Table>
                     </div>
 
-                    {/* Мобильная версия (карточки без горизонтального скролла) */}
+                    {/* Мобильная версия */}
                     <div className="d-md-none">
-                        {availableOlympiads.map((olymp) => {
-                            const isTooOld = Boolean(user_class && user_class > olymp.class && !isEconomics(olymp));
-                            const isDisabled = hasActiveApplication || isTooOld;
+                        {availableOlympiads.map((olymp) => (
+                            <Card
+                                key={olymp.id}
+                                className="mb-3 shadow-sm"
+                                style={{
+                                    opacity:
+                                        hasActiveApplication ||
+                                        (user_class && user_class > olymp.class && !isEconomics(olymp))
+                                            ? 0.75
+                                            : 1
+                                }}
+                            >
+                                <Card.Body>
+                                    <Card.Title className="h5 mb-2">{olymp.name}</Card.Title>
+                                    <p className="mb-3 text-muted">
+                                        <strong>Класс:</strong> {renderClassLabel(olymp)}
+                                    </p>
 
-                            return (
-                                <Card
-                                    key={olymp.id}
-                                    className="mb-3 shadow-sm"
-                                    style={{ opacity: isDisabled ? 0.75 : 1 }}
-                                >
-                                    <Card.Body>
-                                        <Card.Title className="h5 mb-2">{olymp.name}</Card.Title>
-
-                                        <p className="mb-1 text-muted">
-                                            <strong>Предмет:</strong> {olymp.subject}
-                                        </p>
-
-                                        <p className="mb-3 text-muted">
-                                            <strong>Класс:</strong> {renderClassLabel(olymp)}
-                                        </p>
-
-                                        {renderActionButton(olymp)}
-                                    </Card.Body>
-                                </Card>
-                            );
-                        })}
+                                    {renderActionButton(olymp)}
+                                </Card.Body>
+                            </Card>
+                        ))}
                     </div>
                 </>
+            )}
+
+            {/* Модальное окно портфолио, открывающееся сразу после подачи */}
+            {newApplication && (
+                <PortfolioModal
+                    show={showPortfolioModal}
+                    onHide={() => {
+                        // Закрыли без сохранения — теперь обновляем список, чтобы отобразить созданную заявку
+                        setShowPortfolioModal(false);
+                        setNewApplication(null);
+                        onApplied();
+                    }}
+                    applicationId={newApplication.id}
+                    programName={newApplication.programName}
+                    subjectName={newApplication.subjectName}
+                    classParticipation={newApplication.classParticipation}
+                    token={accessToken!}
+                    existingPortfolio={null} // Заведомо null: режим создания, никаких запросов
+                    onSuccess={() => {
+                        // Сохранили портфолио — теперь обновляем список
+                        setShowPortfolioModal(false);
+                        setNewApplication(null);
+                        onApplied();
+                    }}
+                />
             )}
         </div>
     );

@@ -59,10 +59,16 @@ export async function axiosGetPortfolioByApplicationId(token: string, applicatio
             headers: { Authorization: `Bearer ${token}` },
             withCredentials: true,
         });
-        console.log("Portfolio data:", res.data);
         return res.data?.data ?? res.data ?? null;
     } catch (e: any) {
-        if (e.response?.status === 404) return null;
+        const status = e.response?.status;
+        const message = e.response?.data?.message;
+
+        // Если портфолио еще не прикреплено (сервер возвращает 404 или 400 "portfolio not found")
+        if (status === 404 || (status === 400 && message === "portfolio not found")) {
+            return null;
+        }
+
         throw e;
     }
 }

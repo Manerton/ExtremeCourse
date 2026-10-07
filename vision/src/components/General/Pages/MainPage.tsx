@@ -27,7 +27,7 @@ const MainPage: React.FC = () => {
             className="d-flex flex-column justify-content-center align-items-center h-100 text-center p-3"
           >
               <h1 className="display-4 fw-bold text-center">
-                  Профильные смены<br />
+                  Профильная смена<br />
                   <span>
                     В{' '}
                       <span className="rsht-letter letter-r">Р</span>
