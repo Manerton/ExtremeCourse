@@ -2,6 +2,7 @@ package portfolio_handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	dto "main/internal/dto/portfolio"
@@ -117,14 +118,16 @@ func (h *PortfolioHandler) GetByApplicationID(w http.ResponseWriter, r *http.Req
 	})
 }
 
-// @Summary Update portfolio info
+// @Summary Update portfolio info and file
 // @Security BearerAuth
-// @Description Редактирование текстового описания и списка достижений портфолио
+// @Description Обновление описания, достижений и/или файла портфолио
 // @Tags portfolio
-// @Accept json
+// @Accept multipart/form-data
 // @Produce json
 // @Param application_id path string true "ID заявки"
-// @Param request body portfolio_dto.UpdatePortfolioDTO true "Обновляемые данные"
+// @Param description formData string false "Новое описание портфолио"
+// @Param achievements formData []string false "Список кодов достижений (или JSON-массив строкой)"
+// @Param file formData file false "Новый файл портфолио (опционально, заменяет существующий)"
 // @Success 200 {object} response.ApiResponse
 // @Failure 400 {object} response.ApiResponse
 // @Failure 500 {object} response.ApiResponse
@@ -132,21 +135,42 @@ func (h *PortfolioHandler) GetByApplicationID(w http.ResponseWriter, r *http.Req
 func (h *PortfolioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	appID := chi.URLParam(r, "application_id")
 
-	var req struct {
-		Description     *string  `json:"description"`
-		CodeAchievement []string `json:"code_achievement"`
-	}
-	if err := render.DecodeJSON(r.Body, &req); err != nil {
+	if err := r.ParseMultipartForm(25 << 20); err != nil {
 		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("failed to decode json")))
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("invalid multipart form")))
 		return
 	}
 
-	err := h.service.UpdatePortfolio(r.Context(), appID, dto.UpdatePortfolioDTO{
-		Description:     req.Description,
-		CodeAchievement: req.CodeAchievement,
-	})
-	if err != nil {
+	updateDTO := dto.UpdatePortfolioDTO{}
+
+	// Читаем description, если поле присутствует в multipart-запросе
+	if _, exists := r.MultipartForm.Value["description"]; exists {
+		desc := r.FormValue("description")
+		updateDTO.Description = &desc
+	}
+
+	// Читаем achievements (как массив параметров или как JSON-строку)
+	if _, exists := r.MultipartForm.Value["achievements"]; exists {
+		achievements := r.Form["achievements"]
+		if len(achievements) == 0 && r.FormValue("achievements") != "" {
+			_ = json.Unmarshal([]byte(r.FormValue("achievements")), &achievements)
+		}
+		updateDTO.CodeAchievement = achievements
+	}
+
+	// Читаем файл, если он прикреплен
+	file, header, err := r.FormFile("file")
+	if err == nil {
+		defer file.Close()
+		updateDTO.Filename = header.Filename
+		updateDTO.FileReader = file
+	} else if !errors.Is(err, http.ErrMissingFile) {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("failed to parse uploaded file")))
+		return
+	}
+
+	if err := h.service.UpdatePortfolio(r.Context(), appID, updateDTO); err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)
 			render.JSON(w, r, response.ErrorApiResponse(apiErr))

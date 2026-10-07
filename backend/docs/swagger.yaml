@@ -233,19 +233,6 @@ definitions:
       score:
         type: integer
     type: object
-  portfolio_dto.UpdatePortfolioDTO:
-    properties:
-      code_achievement:
-        example:
-        - '["MAXWELL_WINNER"'
-        - '"EULER_PRIZE_WINNER"]'
-        items:
-          type: string
-        type: array
-      description:
-        example: Новое описание проекта
-        type: string
-    type: object
   recover_dto.ChangePasswordDTORequest:
     properties:
       new_password:
@@ -522,20 +509,29 @@ paths:
       - portfolio
     patch:
       consumes:
-      - application/json
-      description: Редактирование текстового описания и списка достижений портфолио
+      - multipart/form-data
+      description: Обновление описания, достижений и/или файла портфолио
       parameters:
       - description: ID заявки
         in: path
         name: application_id
         required: true
         type: string
-      - description: Обновляемые данные
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/portfolio_dto.UpdatePortfolioDTO'
+      - description: Новое описание портфолио
+        in: formData
+        name: description
+        type: string
+      - collectionFormat: csv
+        description: Список кодов достижений (или JSON-массив строкой)
+        in: formData
+        items:
+          type: string
+        name: achievements
+        type: array
+      - description: Новый файл портфолио (опционально, заменяет существующий)
+        in: formData
+        name: file
+        type: file
       produces:
       - application/json
       responses:
@@ -553,7 +549,7 @@ paths:
             $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
-      summary: Update portfolio info
+      summary: Update portfolio info and file
       tags:
       - portfolio
     post:

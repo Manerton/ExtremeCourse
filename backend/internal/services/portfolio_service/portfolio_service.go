@@ -120,6 +120,9 @@ func (s *PortfolioService) GetByApplicationID(ctx context.Context, appIDStr stri
 }
 
 func (s *PortfolioService) UpdatePortfolio(ctx context.Context, appIDStr string, update dto.UpdatePortfolioDTO) error {
+	const op = "services.PortfolioService.UpdatePortfolio"
+	log := s.log.With(slog.String("op", op))
+
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {
 		return errs.ErrBadRequest.Wrap("invalid application id")
@@ -138,9 +141,34 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, appIDStr string,
 		p.Score = s.calculateScore(update.CodeAchievement)
 	}
 
-	return s.repo.Update(ctx, s.db, &p)
-}
+	var oldPath string
+	var newSavedPath string
 
+	if update.FileReader != nil && update.Filename != "" {
+		newSavedPath, err = s.fileStorage.Save(update.Filename, update.FileReader)
+		if err != nil {
+			log.Error("failed to save new portfolio file", liblogger.Err(err))
+			return errs.ErrInternalError.Wrap("failed to save file")
+		}
+		oldPath = p.FilePath
+		p.FilePath = newSavedPath
+	}
+
+	if err := s.repo.Update(ctx, s.db, &p); err != nil {
+		if newSavedPath != "" {
+			_ = s.fileStorage.Delete(newSavedPath)
+		}
+		log.Error("failed to update portfolio", liblogger.Err(err))
+		return errs.ErrInternalError.Wrap("failed to update portfolio")
+	}
+
+	// Удаляем старый файл только после успешного обновления записи в БД
+	if oldPath != "" {
+		_ = s.fileStorage.Delete(oldPath)
+	}
+
+	return nil
+}
 func (s *PortfolioService) ReplaceFile(ctx context.Context, appIDStr string, filename string, r io.Reader) error {
 	appID, err := uuid.Parse(appIDStr)
 	if err != nil {

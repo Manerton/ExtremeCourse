@@ -319,9 +319,9 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Редактирование текстового описания и списка достижений портфолио",
+                "description": "Обновление описания, достижений и/или файла портфолио",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -329,7 +329,7 @@ const docTemplate = `{
                 "tags": [
                     "portfolio"
                 ],
-                "summary": "Update portfolio info",
+                "summary": "Update portfolio info and file",
                 "parameters": [
                     {
                         "type": "string",
@@ -339,13 +339,26 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Обновляемые данные",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/portfolio_dto.UpdatePortfolioDTO"
-                        }
+                        "type": "string",
+                        "description": "Новое описание портфолио",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Список кодов достижений (или JSON-массив строкой)",
+                        "name": "achievements",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Новый файл портфолио (опционально, заменяет существующий)",
+                        "name": "file",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -3563,25 +3576,6 @@ const docTemplate = `{
                 },
                 "score": {
                     "type": "integer"
-                }
-            }
-        },
-        "portfolio_dto.UpdatePortfolioDTO": {
-            "type": "object",
-            "properties": {
-                "code_achievement": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "[\"MAXWELL_WINNER\"",
-                        "\"EULER_PRIZE_WINNER\"]"
-                    ]
-                },
-                "description": {
-                    "type": "string",
-                    "example": "Новое описание проекта"
                 }
             }
         },
