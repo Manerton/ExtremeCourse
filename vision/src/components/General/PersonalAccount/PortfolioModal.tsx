@@ -9,7 +9,7 @@ import {
     MINOBR_OLYMPIADS,
     SubjectCode,
 } from "../../../requests/PortfolioRequests";
-import { BsBoxArrowUpRight, BsInfoCircle, BsSearch, BsX } from "react-icons/bs";
+import { BsBoxArrowUpRight, BsInfoCircle, BsSearch, BsX, BsFileEarmarkArrowDown } from "react-icons/bs";
 
 interface Props {
     show: boolean;
@@ -87,6 +87,9 @@ const PortfolioModal: React.FC<Props> = ({
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+
+    // Ссылка на шаблон презентации (заполнить при наличии)
+    const presentationTemplateUrl = "";
 
     // Поиск и флаг отображения всех предметов
     const [minobrSearch, setMinobrSearch] = useState("");
@@ -363,7 +366,7 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         )}
 
-                        {/* 5. НОВАЯ СЕКЦИЯ: Образовательный центр Сириус */}
+                        {/* 5. Образовательный центр Сириус */}
                         <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                             <div className="d-flex align-items-center mb-2">
                                 <Badge bg="primary" className="me-2" style={{ backgroundColor: "#0066cc" }}>
@@ -376,7 +379,7 @@ const PortfolioModal: React.FC<Props> = ({
                             <Form.Check
                                 type="checkbox"
                                 id="ach-sirius-participant"
-                                label="Участие в профильной смене в образовательном центре Сириус за 2024–2026 уч. год"
+                                label="Участие в профильной смене в образовательном центре Сириус за 2024–2026 год"
                                 checked={selectedAchievements.includes(Achievement.SiriusParticipant)}
                                 onChange={() => handleCheckboxToggle(Achievement.SiriusParticipant)}
                             />
@@ -400,7 +403,7 @@ const PortfolioModal: React.FC<Props> = ({
                                     href="https://base.garant.ru/412793733/"
                                     target="_blank"
                                     rel="noreferrer noopener"
-                                    className="btn btn-outline-success btn-sm py-0 px-2 d-inline-flex align-items-center"
+                                    className="btn btn-outline-success btn-sm py-1 px-2 d-inline-flex align-items-center"
                                     title="Перейти к официальному перечню на Гарант.ру"
                                 >
                                     Перейти к перечню
@@ -574,10 +577,38 @@ const PortfolioModal: React.FC<Props> = ({
 
                     {/* Поле файла */}
                     <Form.Group className="mb-3">
-                        <Form.Label className="d-block mb-1">
-                            <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
-                            {!isEditMode && <span className="text-danger ms-1">*</span>}
-                        </Form.Label>
+                        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                            <Form.Label className="mb-0">
+                                <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
+                                {!isEditMode && <span className="text-danger ms-1">*</span>}
+                            </Form.Label>
+
+                            {/* Блок со ссылкой на шаблон презентации */}
+                            <a
+                                href={presentationTemplateUrl || "#"}
+                                target={presentationTemplateUrl ? "_blank" : undefined}
+                                rel="noreferrer noopener"
+                                onClick={(e) => {
+                                    if (!presentationTemplateUrl) {
+                                        e.preventDefault();
+                                        alert("Ссылка на шаблон презентации будет добавлена в ближайшее время.");
+                                    }
+                                }}
+                                className="btn btn-outline-primary btn-sm py-1 d-inline-flex align-items-center gap-1"
+                                title="Скачать или просмотреть шаблон презентации о себе"
+                            >
+                                <BsFileEarmarkArrowDown size={14} />
+                                <span>Шаблон презентации</span>
+                            </a>
+                        </div>
+
+                        <Alert
+                            variant="warning"
+                            className="d-inline-flex align-items-center gap-2 py-1 px-3 mb-2 small rounded-pill border-0 bg-warning-subtle text-warning-emphasis"
+                        >
+                            <BsInfoCircle size={15} className="flex-shrink-0" />
+                            <span>Максимальный размер файла — <strong>100 МБ</strong></span>
+                        </Alert>
 
                         {isEditMode && existingPortfolio?.file_path && (
                             <div className="small text-success mb-2 p-2 bg-success-subtle border border-success-subtle rounded">
