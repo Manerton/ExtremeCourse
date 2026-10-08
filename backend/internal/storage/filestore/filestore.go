@@ -24,8 +24,7 @@ func (s *DiskStorage) Save(filename string, src io.Reader) (string, error) {
 		return "", err
 	}
 
-	ext := filepath.Ext(filename)
-	uniqueName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	uniqueName := fmt.Sprintf("%s-%s", uuid.New().String(), filename)
 	targetPath := filepath.Join(s.baseDir, uniqueName)
 
 	dst, err := os.Create(targetPath)
