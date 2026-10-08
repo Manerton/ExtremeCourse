@@ -3525,6 +3525,12 @@ const docTemplate = `{
                 "disability": {
                     "type": "integer"
                 },
+                "parent_fio": {
+                    "type": "string"
+                },
+                "parent_number": {
+                    "type": "string"
+                },
                 "participant_id": {
                     "type": "string"
                 },
@@ -3634,6 +3640,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
+                    "type": "string"
+                },
+                "parent_fio": {
+                    "type": "string"
+                },
+                "parent_number": {
                     "type": "string"
                 },
                 "password": {
@@ -3871,6 +3883,12 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "parent_fio": {
+                    "type": "string"
+                },
+                "parent_number": {
                     "type": "string"
                 },
                 "participant_id": {

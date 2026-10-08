@@ -13,12 +13,14 @@ const (
 )
 
 type Participant struct {
-	ID          uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	UserId      uuid.UUID
-	User        user.User
-	Disability  int
-	SchoolId    uuid.UUID
-	School      school.School
-	Citizenship int
-	ClassNumber int
+	ID           uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	UserId       uuid.UUID
+	User         user.User
+	Disability   int
+	SchoolId     uuid.UUID
+	School       school.School
+	Citizenship  int
+	ClassNumber  int
+	ParentFIO    string
+	ParentNumber string
 }

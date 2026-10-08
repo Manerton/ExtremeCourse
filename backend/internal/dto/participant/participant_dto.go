@@ -7,6 +7,8 @@ type ParticipantResponseDTO struct {
 	SchoolId      string `json:"school_id"`
 	Citizenship   int    `json:"citizenship"`
 	ClassNumber   int    `json:"class_number"`
+	ParentFIO     string `json:"parent_fio"`
+	ParentNumber  string `json:"parent_number"`
 }
 
 type UpdateParticipantRequestDTO struct {

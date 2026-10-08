@@ -18,6 +18,8 @@ func ToDTO(participantModel participant.Participant) participant_dto.Participant
 		UserId:        participantModel.UserId.String(),
 		Disability:    participantModel.Disability,
 		SchoolId:      participantModel.SchoolId.String(),
+		ParentFIO:     participantModel.ParentFIO,
+		ParentNumber:  participantModel.ParentNumber,
 
 		Citizenship: participantModel.Citizenship,
 		ClassNumber: participantModel.ClassNumber,
@@ -35,11 +37,13 @@ func FromRegisterToModel(registerDTO *register_dto.RegisterParticipantRequestDTO
 	classNumber, err := strconv.Atoi(registerDTO.ClassNumber)
 
 	return participant.Participant{
-		UserId:      userId,
-		Disability:  disability,
-		SchoolId:    schoolId,
-		Citizenship: citizenship,
-		ClassNumber: classNumber,
+		UserId:       userId,
+		Disability:   disability,
+		SchoolId:     schoolId,
+		Citizenship:  citizenship,
+		ClassNumber:  classNumber,
+		ParentFIO:    registerDTO.ParentFIO,
+		ParentNumber: registerDTO.ParentNumber,
 	}
 }
 
@@ -99,6 +103,8 @@ func FromPreloadToUserParticipantModel(participantModel participant.Participant)
 			SchoolId:      participantModel.SchoolId.String(),
 			Citizenship:   participantModel.Citizenship,
 			ClassNumber:   participantModel.ClassNumber,
+			ParentFIO:     participantModel.ParentFIO,
+			ParentNumber:  participantModel.ParentNumber,
 		},
 	}
 }

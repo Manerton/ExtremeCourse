@@ -10,6 +10,9 @@ type RegisterParticipantRequestDTO struct {
 	BirthDate   string `json:"birthdate"`
 	Gender      string `json:"gender"`
 
+	ParentFIO    string `json:"parent_fio"`
+	ParentNumber string `json:"parent_number"`
+
 	Disability  string `json:"disability"`
 	SchoolId    string `json:"school_id"`
 	Citizenship string `json:"citizenship"`
