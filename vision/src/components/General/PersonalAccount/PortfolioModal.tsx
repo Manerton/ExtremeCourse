@@ -82,16 +82,13 @@ const PortfolioModal: React.FC<Props> = ({
                                              existingPortfolio,
                                              onSuccess,
                                          }) => {
-    const [description, setDescription] = useState("");
     const [selectedAchievements, setSelectedAchievements] = useState<AchievementType[]>([]);
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    // Ссылка на шаблон презентации (заполнить при наличии)
     const presentationTemplateUrl = "https://disk.yandex.ru/i/AO145eT0WjEwfQ";
 
-    // Поиск и флаг отображения всех предметов
     const [minobrSearch, setMinobrSearch] = useState("");
     const [showAllSubjects, setShowAllSubjects] = useState(false);
 
@@ -110,14 +107,12 @@ const PortfolioModal: React.FC<Props> = ({
 
     useEffect(() => {
         if (existingPortfolio) {
-            setDescription(existingPortfolio.description || "");
             const achievementsList =
                 existingPortfolio.code_achievement ||
                 existingPortfolio.achievements ||
                 [];
             setSelectedAchievements(achievementsList);
         } else {
-            setDescription("");
             setSelectedAchievements([]);
             setFile(null);
         }
@@ -137,7 +132,6 @@ const PortfolioModal: React.FC<Props> = ({
         });
     };
 
-    // Сортировка и фильтрация: подходящие под текущий предмет олимпиады идут первыми
     const filteredMinobrOlympiads = useMemo(() => {
         const query = minobrSearch.trim().toLowerCase();
 
@@ -211,7 +205,7 @@ const PortfolioModal: React.FC<Props> = ({
                 await axiosUpdatePortfolio(
                     token,
                     applicationId,
-                    description,
+                    "",
                     selectedAchievements,
                     file
                 );
@@ -219,7 +213,7 @@ const PortfolioModal: React.FC<Props> = ({
                 await axiosUploadPortfolio(
                     token,
                     applicationId,
-                    description,
+                    "",
                     selectedAchievements,
                     file!
                 );
@@ -385,7 +379,61 @@ const PortfolioModal: React.FC<Props> = ({
                             />
                         </div>
 
-                        {/* 6. Перечневые олимпиады Минобрнауки с фильтрацией по предмету */}
+                        {/* 6. Олимпиада Эйлера (математика) */}
+                        {isMath && (
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">Математика</Badge>
+                                    <span className="fw-bold text-dark">
+                                        Олимпиада им. Леонарда Эйлера
+                                    </span>
+                                </div>
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-euler-win"
+                                    className="mb-2"
+                                    label="Победитель олимпиады им. Леонарда Эйлера за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.EulerWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.EulerWinner)}
+                                />
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-euler-prize"
+                                    label="Призёр олимпиады им. Леонарда Эйлера за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.EulerPrizeWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.EulerPrizeWinner)}
+                                />
+                            </div>
+                        )}
+
+                        {/* 7. Олимпиада Максвелла (физика) */}
+                        {isPhysics && (
+                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
+                                <div className="d-flex align-items-center mb-2">
+                                    <Badge bg="warning" className="me-2 text-dark">Физика</Badge>
+                                    <span className="fw-bold text-dark">
+                                        Олимпиада им. Дж. Кл. Максвелла
+                                    </span>
+                                </div>
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-maxwell-win"
+                                    className="mb-2"
+                                    label="Победитель олимпиады им. Дж. Кл. Максвелла за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.MaxwellWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellWinner)}
+                                />
+                                <Form.Check
+                                    type="checkbox"
+                                    id="ach-maxwell-prize"
+                                    label="Призёр олимпиады им. Дж. Кл. Максвелла за 2025–2026 уч. год"
+                                    checked={selectedAchievements.includes(Achievement.MaxwellPrizeWinner)}
+                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellPrizeWinner)}
+                                />
+                            </div>
+                        )}
+
+                        {/* 8. Перечневые олимпиады Минобрнауки с фильтрацией по предмету */}
                         <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                             <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                 <div className="d-flex align-items-center">
@@ -505,102 +553,40 @@ const PortfolioModal: React.FC<Props> = ({
                                 )}
                             </div>
                         </div>
-
-                        {/* 7. Олимпиада Эйлера (математика) */}
-                        {isMath && (
-                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
-                                <div className="d-flex align-items-center mb-2">
-                                    <Badge bg="warning" className="me-2 text-dark">Математика</Badge>
-                                    <span className="fw-bold text-dark">
-                                        Олимпиада им. Леонарда Эйлера
-                                    </span>
-                                </div>
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-euler-win"
-                                    className="mb-2"
-                                    label="Победитель олимпиады им. Леонарда Эйлера за 2025–2026 уч. год"
-                                    checked={selectedAchievements.includes(Achievement.EulerWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.EulerWinner)}
-                                />
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-euler-prize"
-                                    label="Призёр олимпиады им. Леонарда Эйлера за 2025–2026 уч. год"
-                                    checked={selectedAchievements.includes(Achievement.EulerPrizeWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.EulerPrizeWinner)}
-                                />
-                            </div>
-                        )}
-
-                        {/* 8. Олимпиада Максвелла (физика) */}
-                        {isPhysics && (
-                            <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
-                                <div className="d-flex align-items-center mb-2">
-                                    <Badge bg="warning" className="me-2 text-dark">Физика</Badge>
-                                    <span className="fw-bold text-dark">
-                                        Олимпиада им. Дж. Кл. Максвелла
-                                    </span>
-                                </div>
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-maxwell-win"
-                                    className="mb-2"
-                                    label="Победитель олимпиады им. Дж. Кл. Максвелла за 2025–2026 уч. год"
-                                    checked={selectedAchievements.includes(Achievement.MaxwellWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellWinner)}
-                                />
-                                <Form.Check
-                                    type="checkbox"
-                                    id="ach-maxwell-prize"
-                                    label="Призёр олимпиады им. Дж. Кл. Максвелла за 2025–2026 уч. год"
-                                    checked={selectedAchievements.includes(Achievement.MaxwellPrizeWinner)}
-                                    onChange={() => handleCheckboxToggle(Achievement.MaxwellPrizeWinner)}
-                                />
-                            </div>
-                        )}
                     </div>
 
-                    {/* Описание портфолио */}
-                    <Form.Group className="mb-4">
-                        <Form.Label>
-                            <strong>Описание портфолио <span className="text-muted fw-normal">(необязательно):</span></strong>
-                        </Form.Label>
-                        <Form.Control
-                            as="textarea"
-                            rows={3}
-                            placeholder="Опишите ваши грамоты, успехи или дайте пояснения к прикрепленным файлам..."
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                        />
-                    </Form.Group>
-
-                    {/* Поле файла */}
-                    <Form.Group className="mb-3">
-                        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                            <Form.Label className="mb-0">
-                                <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
-                                {!isEditMode && <span className="text-danger ms-1">*</span>}
-                            </Form.Label>
-
-                            {/* Блок со ссылкой на шаблон презентации */}
-                            <a
-                                href={presentationTemplateUrl || "#"}
-                                target={presentationTemplateUrl ? "_blank" : undefined}
+                    {/* Информационный блок вместо описания с кнопкой скачивания шаблона */}
+                    <Alert variant="info" className="p-3 mb-4 border-info-subtle bg-info-subtle shadow-sm">
+                        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                            <div className="d-flex align-items-start gap-2">
+                                <BsInfoCircle size={22} className="text-primary flex-shrink-0 mt-1" />
+                                <div className="small text-dark">
+                                    <strong>Важная информация:</strong> по каждому из отмеченных вами пунктов
+                                    необходимо вставить скан или фотографию подтверждающего документа в презентацию о себе,
+                                    строго следуя установленному шаблону.
+                                </div>
+                            </div>
+                            <Button
+                                as="a"
+                                href={presentationTemplateUrl}
+                                target="_blank"
                                 rel="noreferrer noopener"
-                                onClick={(e) => {
-                                    if (!presentationTemplateUrl) {
-                                        e.preventDefault();
-                                        alert("Ссылка на шаблон презентации будет добавлена в ближайшее время.");
-                                    }
-                                }}
-                                className="btn btn-outline-primary btn-sm py-1 d-inline-flex align-items-center gap-1"
-                                title="Скачать или просмотреть шаблон презентации о себе"
+                                variant="primary"
+                                className="d-inline-flex align-items-center gap-2 text-nowrap px-3 py-2 fw-semibold flex-shrink-0 shadow-sm"
+                                title="Скачать шаблон презентации с Яндекс.Диска"
                             >
-                                <BsFileEarmarkArrowDown size={14} />
-                                <span>Шаблон презентации</span>
-                            </a>
+                                <BsFileEarmarkArrowDown size={18} />
+                                <span>Скачать шаблон презентации</span>
+                            </Button>
                         </div>
+                    </Alert>
+
+                    {/* Поле загрузки файла */}
+                    <Form.Group className="mb-3">
+                        <Form.Label className="d-block mb-1">
+                            <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
+                            {!isEditMode && <span className="text-danger ms-1">*</span>}
+                        </Form.Label>
 
                         <Alert
                             variant="warning"
@@ -660,7 +646,7 @@ const PortfolioModal: React.FC<Props> = ({
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={onHide} disabled={submitting}>
-                        Отмена
+                        {isEditMode ? "Отмена" : "У меня нет портфолио"}
                     </Button>
                     <Button variant="primary" type="submit" disabled={submitting}>
                         {submitting ? "Сохранение..." : isEditMode ? "Обновить данные" : "Прикрепить"}

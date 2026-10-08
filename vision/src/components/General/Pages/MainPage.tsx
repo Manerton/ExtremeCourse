@@ -208,7 +208,7 @@ const MainPage: React.FC = () => {
 
             {/* Right Block */}
             <div className="border rounded p-3  text-center flex-fill">
-              <h4>У Вас уже есть личный кабинет</h4>
+              <h4>У Вас уже есть личный кабинет?</h4>
               <p>Войдите в личный кабинет</p>
               <Button variant="success" onClick={() => navigate("/Auth")}>Войти</Button>
             </div>
@@ -235,12 +235,12 @@ const MainPage: React.FC = () => {
           <Accordion defaultActiveKey="0">
             <Accordion.Item eventKey="0">
               <Accordion.Header>Как получить доступ к личному кабинету</Accordion.Header>
-              <Accordion.Body>Для получения доступа к личному кабинету создайте его пройдя регистрацию.</Accordion.Body>
+              <Accordion.Body>Для получения доступа к личному кабинету, создайте его пройдя регистрацию.</Accordion.Body>
             </Accordion.Item>
-            <Accordion.Item eventKey="2">
-              <Accordion.Header>Когда будут проходить профильные смены?</Accordion.Header>
-              <Accordion.Body>Информация о датах проведения профильных смен будет опубликована на сайте в личных кабинетах участников.</Accordion.Body>
-            </Accordion.Item>
+            {/*<Accordion.Item eventKey="2">*/}
+            {/*  <Accordion.Header>Когда будут проходить профильные смены?</Accordion.Header>*/}
+            {/*  <Accordion.Body>Информация о датах проведения профильных смен будет опубликована на сайте в личных кабинетах участников.</Accordion.Body>*/}
+            {/*</Accordion.Item>*/}
             <Accordion.Item eventKey="3">
                 <Accordion.Header>Можно ли участвовать в профильных сменах по нескольким предметам?</Accordion.Header>
                 <Accordion.Body>
@@ -248,10 +248,10 @@ const MainPage: React.FC = () => {
                      Вы можете подавать заявки на разные программы, но активной в системе может оставаться <strong>только одна заявка</strong>. Чтобы выбрать другой предмет или направление, сначала отзовите ранее поданную активную заявку в разделе «Мои заявки».
                 </Accordion.Body>
             </Accordion.Item>
-            {/* <Accordion.Item eventKey="4">
+            {<Accordion.Item eventKey="4">
               <Accordion.Header>Что делать, если я забыл пароль?</Accordion.Header>
               <Accordion.Body>На странице входа нажмите «Забыли пароль?» и следуйте инструкциям для восстановления пароля.</Accordion.Body>
-            </Accordion.Item> */}
+            </Accordion.Item> }
             <Accordion.Item eventKey="5">
               <Accordion.Header>Как подать заявку на участие в профильной смене?</Accordion.Header>
               <Accordion.Body>После регистрации и входа в личный кабинет выберите интересующую вас профильную смену из списка доступных и нажмите кнопку "Подать заявку".</Accordion.Body>
