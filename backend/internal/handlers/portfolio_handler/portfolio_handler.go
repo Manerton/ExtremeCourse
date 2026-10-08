@@ -47,7 +47,7 @@ func (h *PortfolioHandler) CreatePortfolio(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Ограничиваем размер входящего запроса (например, 25 МБ)
-	if err := r.ParseMultipartForm(25 << 20); err != nil {
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		render.Status(r, http.StatusBadRequest)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("invalid multipart form")))
 		return
@@ -135,7 +135,7 @@ func (h *PortfolioHandler) GetByApplicationID(w http.ResponseWriter, r *http.Req
 func (h *PortfolioHandler) Update(w http.ResponseWriter, r *http.Request) {
 	appID := chi.URLParam(r, "application_id")
 
-	if err := r.ParseMultipartForm(25 << 20); err != nil {
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		render.Status(r, http.StatusBadRequest)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("invalid multipart form")))
 		return
@@ -199,7 +199,7 @@ func (h *PortfolioHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *PortfolioHandler) UploadOrReplaceFile(w http.ResponseWriter, r *http.Request) {
 	appID := chi.URLParam(r, "application_id")
 
-	if err := r.ParseMultipartForm(25 << 20); err != nil {
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		render.Status(r, http.StatusBadRequest)
 		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("invalid multipart form")))
 		return

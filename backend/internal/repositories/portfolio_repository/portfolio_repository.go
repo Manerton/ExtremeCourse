@@ -37,6 +37,15 @@ func (r *PortfolioRepository) GetByApplicationID(ctx context.Context, o orm.ORM,
 	return p, nil
 }
 
+func (r *PortfolioRepository) GetByApplicationIDList(ctx context.Context, o orm.ORM, appIDs []uuid.UUID) ([]models.Portfolio, error) {
+	const op = "repositories.PortfolioRepository.GetByApplicationIDList"
+	var result []models.Portfolio
+	if err := o.Find(ctx, models.Portfolio{}, nil, nil, nil, nil, nil, &result, "id IN ?", appIDs); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return result, nil
+}
+
 func (r *PortfolioRepository) Update(ctx context.Context, o orm.ORM, p *models.Portfolio) error {
 	const op = "repositories.PortfolioRepository.Update"
 	err := o.Updates(ctx, models.Portfolio{ID: p.ID}, p)

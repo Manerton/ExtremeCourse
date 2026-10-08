@@ -89,7 +89,7 @@ const PortfolioModal: React.FC<Props> = ({
     const [submitting, setSubmitting] = useState(false);
 
     // Ссылка на шаблон презентации (заполнить при наличии)
-    const presentationTemplateUrl = "";
+    const presentationTemplateUrl = "https://disk.yandex.ru/i/AO145eT0WjEwfQ";
 
     // Поиск и флаг отображения всех предметов
     const [minobrSearch, setMinobrSearch] = useState("");

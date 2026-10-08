@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	ApplicationDto "main/internal/dto/applications"
+	portfolio_dto "main/internal/dto/portfolio"
 	"main/internal/lib/errs"
 	"main/internal/lib/liblogger"
 	"main/internal/lib/verification"
 	models "main/internal/models/applications"
 	"main/internal/models/event"
+	"main/internal/models/portfolio"
 	"main/internal/models/school"
 	"main/internal/models/user"
 	"main/internal/storage/orm"
@@ -47,26 +49,33 @@ type EventRepository interface {
 	GetByListId(ctx context.Context, o orm.ORM, ids []uuid.UUID) ([]event.Event, error)
 }
 
+type PortfolioRepository interface {
+	GetByApplicationIDList(ctx context.Context, o orm.ORM, appIDs []uuid.UUID) ([]portfolio.Portfolio, error)
+}
+
 type ApplicationService struct {
-	db         orm.ORM
-	log        *slog.Logger
-	repository ApplicationRepository
-	userRepo   UserRepository
-	schoolRepo SchoolRepository
-	eventRepo  EventRepository
+	db            orm.ORM
+	log           *slog.Logger
+	repository    ApplicationRepository
+	userRepo      UserRepository
+	schoolRepo    SchoolRepository
+	eventRepo     EventRepository
+	portfolioRepo PortfolioRepository
 }
 
 func NewApplicationService(log *slog.Logger, db orm.ORM, repo ApplicationRepository,
 	userRepo UserRepository,
 	schoolRepo SchoolRepository,
-	eventRepo EventRepository) *ApplicationService {
+	eventRepo EventRepository,
+	portfolioRepo PortfolioRepository) *ApplicationService {
 	return &ApplicationService{
-		db:         db,
-		log:        log,
-		repository: repo,
-		userRepo:   userRepo,
-		schoolRepo: schoolRepo,
-		eventRepo:  eventRepo,
+		db:            db,
+		log:           log,
+		repository:    repo,
+		userRepo:      userRepo,
+		schoolRepo:    schoolRepo,
+		eventRepo:     eventRepo,
+		portfolioRepo: portfolioRepo,
 	}
 }
 
@@ -409,11 +418,13 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 	userMapIDs := make(map[uuid.UUID]bool)
 	schoolMapIDs := make(map[uuid.UUID]bool)
 	eventMapIDs := make(map[uuid.UUID]bool)
+	appIds := make([]uuid.UUID, 0, len(apps))
 
 	for _, app := range apps {
 		userMapIDs[app.UserID] = true
 		schoolMapIDs[app.SchoolID] = true
 		eventMapIDs[app.EventID] = true
+		appIds = append(appIds, app.ID)
 	}
 
 	userIDs := make([]uuid.UUID, 0, len(userMapIDs))
@@ -449,6 +460,17 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 		schoolMap[sc.ID] = sc
 	}
 
+	portfolios, err := s.portfolioRepo.GetByApplicationIDList(ctx, s.db, appIds)
+	if err != nil {
+		log.Error("failed get applications", liblogger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+
+	portfolioMap := make(map[uuid.UUID]portfolio.Portfolio, len(portfolios))
+	for _, pf := range portfolios {
+		portfolioMap[pf.ApplicationID] = pf
+	}
+
 	events, err := s.eventRepo.GetByListId(ctx, s.db, eventIDs)
 	if err != nil {
 		log.Error("failed get events", liblogger.Err(err))
@@ -464,6 +486,7 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 		u := userMap[app.UserID]
 		sc := schoolMap[app.SchoolID]
 		ev := eventMap[app.EventID]
+		pf := portfolioMap[app.ID]
 
 		fullName := strings.TrimSpace(u.Surname + " " + u.Firstname + " " + u.Patronymic)
 		if fullName == "" {
@@ -495,6 +518,14 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 				Subject: ev.Subject,
 				Class:   ev.Class,
 				Status:  ev.Status,
+			},
+			Portfolio: portfolio_dto.PortfolioResponseDTO{
+				ID:              pf.ID.String(),
+				ApplicationID:   pf.ApplicationID.String(),
+				Description:     pf.Description,
+				Score:           pf.Score,
+				CodeAchievement: pf.CodeAchievement,
+				FilePath:        pf.FilePath,
 			},
 		})
 	}

@@ -1,6 +1,7 @@
 package ApplicationDto
 
 import (
+	portfolio_dto "main/internal/dto/portfolio"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,7 +39,6 @@ type ApplicationResponseDTO struct {
 	SchoolID           uuid.UUID `json:"schoolId"`
 	EventName          string    `json:"name"`
 	EventID            uuid.UUID `json:"eventId"`
-	Profile            string    `json:"profile"`
 	ClassParticipation int       `json:"class_participation"`
 	Status             int       `json:"status"` // // 2 = одобрено, 3 = отклонено, 1 = не обработано
 	SubmittedAt        time.Time `json:"submittedAt"`
@@ -70,12 +70,13 @@ type EventDetailsDTO struct {
 }
 
 type FullApplicationDetailsDTO struct {
-	ID                 string           `json:"id"`
-	Status             int              `json:"status"`
-	ClassParticipation int              `json:"class_participation"`
-	SubmittedAt        time.Time        `json:"submitted_at"`
-	UpdatedAt          time.Time        `json:"updated_at"`
-	User               UserDetailsDTO   `json:"user"`
-	School             SchoolDetailsDTO `json:"school"`
-	Event              EventDetailsDTO  `json:"event"`
+	ID                 string                             `json:"id"`
+	Status             int                                `json:"status"`
+	ClassParticipation int                                `json:"class_participation"`
+	SubmittedAt        time.Time                          `json:"submitted_at"`
+	UpdatedAt          time.Time                          `json:"updated_at"`
+	User               UserDetailsDTO                     `json:"user"`
+	School             SchoolDetailsDTO                   `json:"school"`
+	Event              EventDetailsDTO                    `json:"event"`
+	Portfolio          portfolio_dto.PortfolioResponseDTO `json:"portfolio"`
 }
