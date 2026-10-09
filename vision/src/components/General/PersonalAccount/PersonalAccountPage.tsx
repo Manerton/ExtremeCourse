@@ -173,7 +173,7 @@ const ParticipantDashboard: React.FC = () => {
                 </Collapse>
             </Card>
 
-            {/*<VideoInfoBlock />*/}
+            {<VideoInfoBlock />}
         </div>
     );
 };

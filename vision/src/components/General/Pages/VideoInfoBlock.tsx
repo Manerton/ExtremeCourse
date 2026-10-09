@@ -13,7 +13,7 @@ const VideoInfoBlock: React.FC = () => {
                     <Button
                         variant="info"
                         size="lg"
-                        onClick={() => window.open("https://disk.yandex.ru/i/WTn4PNPzL_P0sw", "_blank")}
+                        onClick={() => window.open("https://disk.yandex.ru/i/A6bwTg63f3wRoQ", "_blank")}
                     >
                         Смотреть видео
                     </Button>
