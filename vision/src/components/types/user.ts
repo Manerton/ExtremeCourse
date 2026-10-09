@@ -80,6 +80,8 @@ export interface UserResponseDTO {
   birthdate: string
   gender: number
   role: number
+  parent_fio: string
+  parent_number: string
   activated: boolean
 }
 

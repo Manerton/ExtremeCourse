@@ -10,17 +10,23 @@ const AdminPanel: React.FC = () => {
         <h1 className="display-4 fw-bold text-center">
           Администрирование<br />
           <hr />
-          Всероссийская олимпиада школьников <br />
-          <span
-            style={{
-              background: 'linear-gradient(to right, #1494D4, #70FF99)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              display: 'inline-block'
-            }}
-          >
-            в Астраханской области!
-          </span>
+            <div
+                className="d-flex flex-column justify-content-center align-items-center h-100 text-center p-3"
+            >
+                <h1 className="display-4 fw-bold text-center">
+                    Профильная смена<br />
+                    <span>
+                    В{' '}
+                        <span className="rsht-letter letter-r">Р</span>
+                        <span className="rsht-letter letter-sh">Ш</span>
+                        <span className="rsht-letter letter-t">Т</span>
+                  </span>
+                </h1>
+
+                {/* <p className="lead">
+                    Упрощение процессов, помощь талантливым школьникам раскрыть свой потенциал.
+                  </p> */}
+            </div>
         </h1>
 
       </div>

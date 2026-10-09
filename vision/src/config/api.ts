@@ -17,7 +17,7 @@ export const API_CONFIG = {
     JURYBYSTAGE: `${API_URL}/jury-names/`,
     CREATEMANYJURY: `${API_URL}/jury-assignments/many`,
     DELETEMANYJURY: `${API_URL}/jury-assignments/delete/many`,
-    ALLAPPLICATIONS: `${API_URL}/AllApplications/`,
+    ALLAPPLICATIONS: `${API_URL}/applications/full-details`,
 };
 
 export const AUTH = {
@@ -47,7 +47,7 @@ export const LINKS = {
 export const USER = {
     update: `${API_URL}/users/`,
     info: `${API_URL}/users/all-info/`,
-    infoParticipant: `${API_URL}/users/participant/all-info/`,
+    infoParticipant: `${API_URL}/users/all-info`,
     changePassword: `${API_URL}/users/change-password/`,
 };
 

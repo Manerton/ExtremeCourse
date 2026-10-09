@@ -66,6 +66,7 @@ import OlympiadsAdminTable from './components/Admin/Pages/Olympiads';
 import ApplicationsPage from "./components/Admin/Pages/ApplicationsAll";
 import ApplicationsPageBySubject from './components/General/Pages/AppliedListBySubject';
 import ApprovalApplicationsPageBySubject from './components/General/Pages/ApprovalApplicationBySubject';
+import UsersListPage from "./components/Admin/Pages/UsersList";
 
 function App() {
     return (
@@ -77,7 +78,7 @@ function App() {
                             <Route path="/" element={<MainPage />} />
                             <Route path="/PersonalAccount" element={<ParticipantDashboard />} />
                             <Route path="/verifyApplications" element={<VerifyApplicationsPage />} />
-                            <Route path="/AllApplications" element={<ApplicationsPage />} />
+
                             <Route
                             path="/profile"
                             element={
@@ -124,7 +125,11 @@ function App() {
                             <Route path="/applied-list" element={<ApplicationsPageBySubject />}></Route>
                             <Route path="/approval-applied-list" element={<ApprovalApplicationsPageBySubject />}></Route>
 
+
                             <Route path="/AdminPanel" element={<AdminPanel />} />
+                            <Route path="/AdminPanel/UserList" element={<UsersListPage />} />
+                            <Route path="/AdminPanel/AllApplications" element={<ApplicationsPage />} />
+
                             <Route path="/olymp-admin/user/index" element={<UserIndex />} />
                             <Route path="/olymp-admin/user/show/:id" element={<UserShow />} />
                             <Route path="/olymp-admin/user/create" element={<UserCreate />} />

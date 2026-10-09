@@ -89,7 +89,7 @@ const AdminSidebar: React.FC = () => {
             <>
               <Nav.Link
                 as={Link}
-                to="/olymp-admin/user/index"
+                to="/AdminPanel/UserList"
                 className="text-white d-flex align-items-center"
               >
                 <People className="me-2" />
@@ -105,32 +105,32 @@ const AdminSidebar: React.FC = () => {
               {/*  {!collapsed && "Участники"}*/}
               {/*</Nav.Link>*/}
 
-              <Nav.Link
-                as={Link}
-                to="/olymp-admin/school/index"
-                className="text-white d-flex align-items-center"
-              >
-                <FileEarmarkText className="me-2" />
-                {!collapsed && "Школы"}
-              </Nav.Link>
+              {/*<Nav.Link*/}
+              {/*  as={Link}*/}
+              {/*  to="/olymp-admin/school/index"*/}
+              {/*  className="text-white d-flex align-items-center"*/}
+              {/*>*/}
+              {/*  <FileEarmarkText className="me-2" />*/}
+              {/*  {!collapsed && "Школы"}*/}
+              {/*</Nav.Link>*/}
 
-              <Nav.Link
-                as={Link}
-                to="/olymp-admin/report/index"
-                className="text-white d-flex align-items-center"
-              >
-                <CreditCard className="me-2" />
-                {!collapsed && "Отчеты"}
-              </Nav.Link>
+              {/*<Nav.Link*/}
+              {/*  as={Link}*/}
+              {/*  to="/olymp-admin/report/index"*/}
+              {/*  className="text-white d-flex align-items-center"*/}
+              {/*>*/}
+              {/*  <CreditCard className="me-2" />*/}
+              {/*  {!collapsed && "Отчеты"}*/}
+              {/*</Nav.Link>*/}
 
-              <Nav.Link
-                as={Link}
-                to="/link-access"
-                className="text-white d-flex align-items-center"
-              >
-                <CreditCard className="me-2" />
-                {!collapsed && "Ссылки доступа"}
-              </Nav.Link>
+              {/*<Nav.Link*/}
+              {/*  as={Link}*/}
+              {/*  to="/link-access"*/}
+              {/*  className="text-white d-flex align-items-center"*/}
+              {/*>*/}
+              {/*  <CreditCard className="me-2" />*/}
+              {/*  {!collapsed && "Ссылки доступа"}*/}
+              {/*</Nav.Link>*/}
               {/* 
 
               <Nav.Link
@@ -142,42 +142,42 @@ const AdminSidebar: React.FC = () => {
                 {!collapsed && "Олимпиады"}
               </Nav.Link> */}
 
-              <Nav.Link
-                as={Link}
-                to="/list-olympiads"
-                className="text-white d-flex align-items-center"
-              >
-                <CalendarCheck className="me-2" />
-                {!collapsed && "Олимпиады"}
-              </Nav.Link>
+              {/*<Nav.Link*/}
+              {/*  as={Link}*/}
+              {/*  to="/list-olympiads"*/}
+              {/*  className="text-white d-flex align-items-center"*/}
+              {/*>*/}
+              {/*  <CalendarCheck className="me-2" />*/}
+              {/*  {!collapsed && "Олимпиады"}*/}
+              {/*</Nav.Link>*/}
 
               <Nav.Link
                 as={Link}
-                to="/AllApplications"
-                className="text-white d-flex align-items-center"
-              >
-                <FileText className="me-2" />
-                {!collapsed && "Заявки"}
-
-              </Nav.Link>
-              <Nav.Link
-                as={Link}
-                to="/applied-list"
+                to="/AdminPanel/AllApplications"
                 className="text-white d-flex align-items-center"
               >
                 <FileText className="me-2" />
-                {!collapsed && "Заявки по предмету"}
+                {!collapsed && "Рассмотрение заявок"}
+
               </Nav.Link>
+              {/*<Nav.Link*/}
+              {/*  as={Link}*/}
+              {/*  to="/applied-list"*/}
+              {/*  className="text-white d-flex align-items-center"*/}
+              {/*>*/}
+              {/*  <FileText className="me-2" />*/}
+              {/*  {!collapsed && "Заявки по предмету"}*/}
+              {/*</Nav.Link>*/}
 
 
-              <Nav.Link
-                as={Link}
-                to="/approval-applied-list"
-                className="text-white d-flex align-items-center"
-              >
-                <FileText className="me-2" />
-                {!collapsed && "Одобрение заявок по предметам"}
-              </Nav.Link>
+              {/*<Nav.Link*/}
+              {/*  as={Link}*/}
+              {/*  to="/approval-applied-list"*/}
+              {/*  className="text-white d-flex align-items-center"*/}
+              {/*>*/}
+              {/*  <FileText className="me-2" />*/}
+              {/*  {!collapsed && "Одобрение заявок по предметам"}*/}
+              {/*</Nav.Link>*/}
 
             </>
           )}

@@ -50,6 +50,7 @@ type UserDetailsDTO struct {
 	Email       string    `json:"email"`
 	FullName    string    `json:"full_name"`
 	PhoneNumber string    `json:"phone_number"`
+	Class       string    `json:"class"`
 	BirthDate   time.Time `json:"birth_date"`
 }
 

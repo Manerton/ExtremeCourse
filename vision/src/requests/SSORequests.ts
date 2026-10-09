@@ -213,5 +213,5 @@ export async function getParticipants(token: string) {
         }
     }
   )
-  return res.data
+    return res.data?.data ?? [];
 }

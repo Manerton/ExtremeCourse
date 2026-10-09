@@ -1,504 +1,667 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Table, Alert, Badge, Button } from "react-bootstrap";
-import axios from "axios";
-import { API_CONFIG } from "../../../config/api";
+import React, { useEffect, useState, useMemo } from "react";
+import {
+    Container,
+    Card,
+    Table,
+    Badge,
+    Button,
+    Form,
+    InputGroup,
+    Spinner,
+    Alert,
+    Modal,
+    Row,
+    Col,
+    ButtonGroup,
+} from "react-bootstrap";
+import {
+    BsSearch,
+    BsArrowClockwise,
+    BsCheckCircle,
+    BsXCircle,
+    BsEye,
+    BsFileEarmarkPdf,
+    BsPersonCircle,
+    BsMortarboard,
+    BsTrophy,
+    BsChevronLeft,
+    BsChevronRight,
+    BsAward,
+} from "react-icons/bs";
 import { useAuth } from "../../Helpers/AuthContext";
+import { FullApplicationDetailsDTO } from "../../types/application";
+import { axiosGetFullApplications } from "../../../requests/ApplicationRequests";
+import { parseAchievement, ParsedAchievement } from "../../../utils/achievementCatalog";
 
-// ===== Константы отображения =====
-const CITIZENSHIP_TEXT: Record<number, string> = { 1: "Россия", 2: "Другое" };
-const DISABILITY_TEXT: Record<number, string> = { 1: "Нет", 2: "Есть" };
-const STATUS_TEXT: Record<number, string> = { 
-  1: "Не обработано", 
-  2: "Одобрено", 
-  3: "Отклонено" 
+// Статусы заявок
+const STATUS_META: Record<number, { text: string; bg: string }> = {
+    2: { text: "На рассмотрении", bg: "warning" },
+    1: { text: "Одобрено", bg: "success" },
+    3: { text: "Отклонено", bg: "danger" },
 };
-const GENDER_TEXT: Record<number, string> = { 1: "М", 2: "Ж" };
 
-// ===== Типы =====
-interface AggregatedApplicationResponse {
-    id: string;
-    firstname: string;
-    surname: string;
-    patronymic: string;
-    email: string;
-    phone: string;
-    birthdate: string;
-    gender: number;
-    classNumber: number;
-    citizenship: number;
-    disability: number;
-    schoolName: string;
-    districtName: string;
-    olympiadName: string;
-    profile?: string | null;
-    category: number;
-    status: number;
-    code: string;
-    submittedAt: string;
-}
-
-interface ApiResponse<T> {
-    status: string;
-    status_code: number;
-    data: T;
-    error?: string;
-}
-
-// Вспомогательный тип для отображения
-interface DisplayApplication {
-    id: string;
-    firstname: string;
-    surname: string;
-    patronymic: string;
-    email: string;
-    phone: string;
-    birthdate: string;
-    gender: string;
-    classNumber: number;
-    citizenship: string;
-    disability: string;
-    schoolName: string;
-    districtName: string;
-    olympiadName: string;
-    profile?: string | null;
-    category: number;
-    status: number;
-    statusText: string;
-    code: string;
-    submittedAt: string;
-}
-
-// ===== API helper =====
-async function axiosGetAllAggregatedApplications(token: string): Promise<AggregatedApplicationResponse[]> {
-    console.log("Making API call to:", API_CONFIG.ALLAPPLICATIONS);
-    
+// Форматирование даты рождения (строго число, месяц, год)
+const formatBirthDate = (dateStr?: string) => {
+    if (!dateStr) return "—";
     try {
-        const res = await axios.get(
-            API_CONFIG.ALLAPPLICATIONS,
-            {
-                headers: { 
-                    Authorization: `Bearer ${token}`,
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                },
-                withCredentials: true,
-                timeout: 30000,
-            }
-        );
-        
-        console.log("Response structure:", {
-            status: res.data.status,
-            status_code: res.data.status_code,
-            dataType: typeof res.data.data,
-            isArray: Array.isArray(res.data.data)
+        return new Date(dateStr).toLocaleDateString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
         });
-        
-        // Проверяем структуру ответа
-        if (res.data.status_code !== 200) {
-            throw new Error(res.data.error || `Ошибка ${res.data.status_code} при получении данных`);
-        }
-        
-        // Вариант 1: Если данные находятся в data.data (двойная вложенность)
-        if (res.data.data && typeof res.data.data === 'object' && res.data.data.data) {
-            console.log("Found nested data structure: data.data.data");
-            const nestedData = res.data.data.data;
-            
-            if (Array.isArray(nestedData)) {
-                console.log("Nested data is array, length:", nestedData.length);
-                return nestedData;
-            } else {
-                console.log("Nested data is not array:", typeof nestedData);
-                return [];
-            }
-        }
-        
-        // Вариант 2: Если данные находятся прямо в data
-        if (Array.isArray(res.data.data)) {
-            console.log("Data is array, length:", res.data.data.length);
-            return res.data.data;
-        }
-        
-        // Вариант 3: Если это объект с полем data
-        if (res.data.data && Array.isArray(res.data.data)) {
-            return res.data.data;
-        }
-        
-        console.warn("Unexpected response format:", res.data);
-        return [];
-        
-    } catch (error: any) {
-        console.error("API Error details:", error);
-        
-        if (error.response) {
-            console.error("Response data:", error.response.data);
-            console.error("Response status:", error.response.status);
-        }
-        
-        if (error.code === 'ECONNABORTED') {
-            throw new Error("Таймаут запроса. Сервер не отвечает.");
-        }
-        
-        if (error.response?.data?.error) {
-            throw new Error(error.response.data.error);
-        }
-        
-        if (error.message) {
-            throw new Error(error.message);
-        }
-        
-        throw new Error("Не удалось загрузить данные.");
-    }
-}
-
-// ===== Вспомогательные функции =====
-const formatDate = (dateString: string): string => {
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ru-RU');
     } catch {
-        return dateString;
+        return dateStr.split("T")[0] || dateStr;
     }
 };
 
-const getStatusBadgeVariant = (status: number): string => {
-    switch(status) {
-        case 1: return "warning";
-        case 2: return "success";
-        case 3: return "danger";
-        default: return "secondary";
+// Форматирование даты и времени подачи заявки
+const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return "—";
+    try {
+        return new Date(dateStr).toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    } catch {
+        return dateStr;
     }
 };
 
-const transformDataForDisplay = (data: AggregatedApplicationResponse[]): DisplayApplication[] => {
-    if (!data || !Array.isArray(data)) return [];
-    
-    return data.map(item => ({
-        ...item,
-        gender: GENDER_TEXT[item.gender] || `Неизвестно (${item.gender})`,
-        citizenship: CITIZENSHIP_TEXT[item.citizenship] || `Неизвестно (${item.citizenship})`,
-        disability: DISABILITY_TEXT[item.disability] || `Неизвестно (${item.disability})`,
-        statusText: STATUS_TEXT[item.status] || `Неизвестно (${item.status})`,
-        birthdate: formatDate(item.birthdate),
-        submittedAt: formatDate(item.submittedAt)
-    }));
-};
-
-// ===== Компонент =====
 const ApplicationsPage: React.FC = () => {
     const { accessToken } = useAuth();
-    const [rawData, setRawData] = useState<AggregatedApplicationResponse[]>([]);
-    const [displayData, setDisplayData] = useState<DisplayApplication[]>([]);
+
+    const [applications, setApplications] = useState<FullApplicationDetailsDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isInitialLoad, setIsInitialLoad] = useState(true);
-    
-    // Refs для защиты от множественных вызовов
-    const isFetchingRef = useRef(false);
-    const abortControllerRef = useRef<AbortController | null>(null);
 
-    useEffect(() => {
-        // Сбрасываем состояние при изменении токена
-        if (!accessToken) {
-            setRawData([]);
-            setDisplayData([]);
-            setError("Отсутствует токен авторизации");
-            setLoading(false);
-            return;
-        }
+    // Пагинация
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
 
-        // Загружаем данные только при начальной загрузке
-        if (isInitialLoad) {
-            fetchData();
-        }
-    }, [accessToken]);
+    // Фильтры
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("ALL");
+    const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
 
-    const fetchData = async () => {
-        // Защита от множественных одновременных запросов
-        if (isFetchingRef.current) {
-            console.log("Запрос уже выполняется, пропускаем...");
-            return;
-        }
+    // Модальное окно детального просмотра
+    const [selectedApp, setSelectedApp] = useState<FullApplicationDetailsDTO | null>(null);
 
-        if (!accessToken) {
-            setError("Отсутствует токен авторизации");
-            return;
-        }
-
+    const loadData = async (currentPage: number, currentLimit: number) => {
+        if (!accessToken) return;
+        setLoading(true);
+        setError(null);
         try {
-            // Отменяем предыдущий запрос если он есть
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-
-            // Создаем новый AbortController
-            const abortController = new AbortController();
-            abortControllerRef.current = abortController;
-            
-            isFetchingRef.current = true;
-            setLoading(true);
-            setError(null);
-            setIsInitialLoad(false);
-
-            console.log("Starting data fetch...");
-            
-            const data = await axiosGetAllAggregatedApplications(accessToken);
-            
-            // Проверяем не был ли запрос отменен
-            if (!abortController.signal.aborted) {
-                console.log("Data fetched successfully, items:", data.length);
-                setRawData(data);
-                setDisplayData(transformDataForDisplay(data));
-            }
+            const data = await axiosGetFullApplications(accessToken, currentPage, currentLimit);
+            setApplications(data);
         } catch (err: any) {
-            // Игнорируем ошибки отмены запроса
-            if (err.name === 'AbortError' || err.message.includes('aborted')) {
-                console.log("Запрос был отменен");
-                return;
-            }
-            
-            console.error("Ошибка при загрузке данных:", err);
-            setError(err.message || "Произошла ошибка при загрузке данных");
+            setError(err.response?.data?.message || err.message || "Ошибка загрузки списка заявок");
         } finally {
-            isFetchingRef.current = false;
             setLoading(false);
         }
     };
 
-    const refreshData = () => {
-        fetchData();
-    };
-
-    // Очистка при размонтировании
     useEffect(() => {
-        return () => {
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-        };
-    }, []);
+        loadData(page, limit);
+    }, [page, limit, accessToken]);
 
-    // Добавим кнопку для ручной загрузки если нужно
-    if (isInitialLoad && !loading && !error) {
-        return (
-            <div className="container py-5">
-                <div className="text-center">
-                    <h4 className="mb-4">Загрузка данных о заявках</h4>
-                    <p className="mb-4">Нажмите кнопку ниже для загрузки данных</p>
-                    <Button 
-                        onClick={fetchData}
-                        variant="primary"
-                        size="lg"
-                    >
-                        Загрузить данные
-                    </Button>
-                </div>
-            </div>
-        );
-    }
+    const uniqueSubjects = useMemo(() => {
+        const subs = new Set<string>();
+        applications.forEach((a) => {
+            if (a.event?.subject) subs.add(a.event.subject);
+        });
+        return Array.from(subs);
+    }, [applications]);
 
-    if (loading) {
-        return (
-            <div className="container py-5">
-                <div className="text-center">
-                    <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Загрузка...</span>
-                    </div>
-                    <p className="mt-3">Загрузка данных...</p>
-                    <small className="text-muted">Пожалуйста, подождите. Это может занять некоторое время.</small>
-                </div>
-            </div>
-        );
-    }
+    const filteredApps = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        return applications.filter((app) => {
+            const userName = (app.user?.full_name || "").toLowerCase();
+            const email = (app.user?.email || "").toLowerCase();
+            const phone = (app.user?.phone_number || "").toLowerCase();
+            const eventName = (app.event?.name || "").toLowerCase();
 
-    if (error) {
-        return (
-            <div className="container py-5">
-                <Alert variant="danger">
-                    <Alert.Heading>Ошибка загрузки данных</Alert.Heading>
-                    <p>{error}</p>
-                    
-                    {/* Дополнительная информация для отладки */}
-                    {error.includes("Таймаут") && (
-                        <p className="mb-0 mt-2">
-                            <small>
-                                Сервер долго не отвечает. Попробуйте обновить позже или проверьте подключение.
-                            </small>
-                        </p>
-                    )}
-                    
-                    <hr />
-                    <div className="d-flex justify-content-end gap-2">
-                        <Button 
-                            onClick={refreshData} 
-                            variant="outline-danger"
-                            disabled={loading}
-                        >
-                            {loading ? 'Загрузка...' : 'Попробовать снова'}
-                        </Button>
-                    </div>
-                </Alert>
-            </div>
+            const matchesQuery =
+                !q ||
+                userName.includes(q) ||
+                email.includes(q) ||
+                phone.includes(q) ||
+                eventName.includes(q);
+
+            const matchesStatus =
+                statusFilter === "ALL" || String(app.status) === statusFilter;
+
+            const matchesSubject =
+                subjectFilter === "ALL" || app.event?.subject === subjectFilter;
+
+            return matchesQuery && matchesStatus && matchesSubject;
+        });
+    }, [applications, searchQuery, statusFilter, subjectFilter]);
+
+    // Преобразуем коды выбранной заявки в структурированный список достижений
+    const selectedParsedAchievements = useMemo<ParsedAchievement[]>(() => {
+        if (!selectedApp?.portfolio?.code_achievement) return [];
+        return selectedApp.portfolio.code_achievement.map(parseAchievement);
+    }, [selectedApp]);
+
+    const calculatedTotalScore = useMemo(() => {
+        return selectedParsedAchievements.reduce((sum, item) => sum + item.score, 0);
+    }, [selectedParsedAchievements]);
+
+    const handleStatusChange = (appId: string, newStatus: number, statusLabel: string) => {
+        alert(
+            `Действие: Перевод заявки [${appId.slice(0, 8)}] в статус "${statusLabel}".\n(Бэкенд-метод изменения статуса находится в разработке)`
         );
-    }
+        setApplications((prev) =>
+            prev.map((item) => (item.id === appId ? { ...item, status: newStatus } : item))
+        );
+        if (selectedApp && selectedApp.id === appId) {
+            setSelectedApp((prev) => (prev ? { ...prev, status: newStatus } : null));
+        }
+    };
 
     return (
-        <div className="container py-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h3 className="mb-0">Все заявки</h3>
+        <Container fluid className="px-4 py-4">
+            {/* Заголовок */}
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                <div>
+                    <h2 className="h4 fw-bold mb-1 text-dark">Реестр поданных заявок</h2>
+                    <p className="text-muted small mb-0">
+                        Панель экспертной проверки достижений, верификации презентаций и допуска к программам
+                    </p>
+                </div>
                 <div className="d-flex gap-2">
-                    <Button 
-                        variant="outline-primary" 
-                        onClick={refreshData}
+                    <Button
+                        variant="outline-primary"
                         size="sm"
+                        className="d-inline-flex align-items-center gap-1"
+                        onClick={() => loadData(page, limit)}
                         disabled={loading}
                     >
-                        {loading ? 'Загрузка...' : 'Обновить'}
+                        <BsArrowClockwise className={loading ? "spin" : ""} />
+                        <span>Обновить</span>
                     </Button>
-                    <Badge bg="light" text="dark" className="fs-6">
-                        Всего: {displayData.length}
-                    </Badge>
                 </div>
             </div>
 
-            {displayData.length === 0 ? (
-                <Alert variant="info">
-                    <Alert.Heading>Заявок не найдено</Alert.Heading>
-                    <p>На данный момент нет заявок для отображения.</p>
-                    <Button onClick={refreshData} variant="outline-info" size="sm">
-                        Обновить
-                    </Button>
-                </Alert>
-            ) : (
-                <>
-                    <Alert variant="success" className="mb-3">
-                        <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>Данные успешно загружены</strong>
-                                <div className="small text-muted">
-                                    Последнее обновление: {new Date().toLocaleTimeString()}
-                                </div>
-                            </div>
-                            <Button 
-                                variant="outline-success" 
-                                size="sm" 
-                                onClick={refreshData}
-                                disabled={loading}
+            {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
+
+            {/* Фильтры */}
+            <Card className="shadow-sm border-0 mb-4">
+                <Card.Body className="p-3">
+                    <Row className="g-3">
+                        <Col md={6} lg={5}>
+                            <InputGroup size="sm">
+                                <InputGroup.Text className="bg-white">
+                                    <BsSearch className="text-muted" />
+                                </InputGroup.Text>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Поиск по ФИО, email, телефону, программе..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </InputGroup>
+                        </Col>
+                        <Col sm={6} md={3} lg={3}>
+                            <Form.Select
+                                size="sm"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
                             >
-                                {loading ? 'Обновление...' : 'Обновить данные'}
-                            </Button>
-                        </div>
-                    </Alert>
-                    
+                                <option value="ALL">Все статусы</option>
+                                <option value="2">На рассмотрении</option>
+                                <option value="1">Одобрено</option>
+                                <option value="3">Отклонено</option>
+                            </Form.Select>
+                        </Col>
+                        <Col sm={6} md={3} lg={2}>
+                            <Form.Select
+                                size="sm"
+                                value={subjectFilter}
+                                onChange={(e) => setSubjectFilter(e.target.value)}
+                            >
+                                <option value="ALL">Все предметы</option>
+                                {uniqueSubjects.map((sub) => (
+                                    <option key={sub} value={sub}>{sub}</option>
+                                ))}
+                            </Form.Select>
+                        </Col>
+                        <Col sm={12} md={12} lg={2} className="text-lg-end">
+                            <span className="small text-muted">
+                                Заявок на странице: <strong>{filteredApps.length}</strong>
+                            </span>
+                        </Col>
+                    </Row>
+                </Card.Body>
+            </Card>
+
+            {/* Таблица заявок */}
+            <Card className="shadow-sm border-0 mb-4">
+                <Card.Body className="p-0">
                     <div className="table-responsive">
-                        <Table bordered hover size="sm" className="align-middle">
+                        <Table hover align="center" className="mb-0 text-nowrap" style={{ fontSize: "0.875rem" }}>
                             <thead className="table-light">
                             <tr>
-                                <th>№</th>
-                                <th>Фамилия</th>
-                                <th>Имя</th>
-                                <th>Отчество</th>
-                                <th>Дата рождения</th>
-                                <th>Email</th>
-                                <th>Телефон</th>
-                                <th>Школа</th>
-                                <th>Муниципалитет</th>
-                                <th>Олимпиада</th>
-                                <th>Профиль</th>
-                                <th>Класс</th>
-                                <th>Класс участия</th>
-                                <th>Пол</th>
-                                <th>Гражданство</th>
-                                <th>ОВЗ</th>
-                                <th>Статус</th>
-                                <th>Код</th>
-                                <th>Дата подачи</th>
+                                <th className="ps-3 py-3">Кандидат / Контакты</th>
+                                <th className="py-3">Программа олимпиады</th>
+                                <th className="py-3 text-center">Класс (уч. / заявка)</th>
+                                <th className="py-3">Школа / Район</th>
+                                <th className="py-3 text-center">Портфолио (Баллы)</th>
+                                <th className="py-3 text-center">Статус</th>
+                                <th className="py-3">Подано</th>
+                                <th className="pe-3 py-3 text-end">Действия</th>
                             </tr>
                             </thead>
                             <tbody>
-                            {displayData.map((app, index) => (
-                                <tr key={app.id}>
-                                    <td className="text-center fw-bold">{index + 1}</td>
-                                    <td>{app.surname}</td>
-                                    <td>{app.firstname}</td>
-                                    <td>{app.patronymic}</td>
-                                    <td>{app.birthdate}</td>
-                                    <td>
-                                        <small className="text-muted">{app.email}</small>
-                                    </td>
-                                    <td>
-                                        <small>{app.phone}</small>
-                                    </td>
-                                    <td>
-                                        <div className="text-truncate" style={{maxWidth: '200px'}} 
-                                             title={app.schoolName}>
-                                            {app.schoolName}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <small>{app.districtName}</small>
-                                    </td>
-                                    <td>
-                                        <div className="text-truncate" style={{maxWidth: '150px'}}
-                                             title={app.olympiadName}>
-                                            {app.olympiadName}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        {app.profile ? (
-                                            <Badge bg="info" text="dark" className="fw-normal">
-                                                {app.profile}
-                                            </Badge>
-                                        ) : (
-                                            <span className="text-muted">—</span>
-                                        )}
-                                    </td>
-                                    <td className="text-center">
-                                        <Badge bg="secondary">{app.classNumber}</Badge>
-                                    </td>
-                                    <td className="text-center">
-                                        <Badge bg="primary">{app.category}</Badge>
-                                    </td>
-                                    <td className="text-center">{app.gender}</td>
-                                    <td>{app.citizenship}</td>
-                                    <td>{app.disability}</td>
-                                    <td>
-                                        <Badge bg={getStatusBadgeVariant(app.status)}>
-                                            {app.statusText}
-                                        </Badge>
-                                    </td>
-                                    <td>
-                                        {app.code ? (
-                                            <code className="bg-light p-1 rounded">{app.code}</code>
-                                        ) : (
-                                            <span className="text-muted">—</span>
-                                        )}
-                                    </td>
-                                    <td>
-                                        <small className="text-muted">{app.submittedAt}</small>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={8} className="text-center py-5">
+                                        <Spinner animation="border" size="sm" variant="primary" className="me-2" />
+                                        <span className="text-muted">Загрузка данных...</span>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : filteredApps.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="text-center py-5 text-muted">
+                                        Заявки не найдены
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredApps.map((app) => {
+                                    const statusMeta = STATUS_META[app.status] || { text: "Неизвестно", bg: "secondary" };
+                                    const hasPortfolio = Boolean(app.portfolio && app.portfolio.id);
+                                    const achievementsCount = app.portfolio?.code_achievement?.length || 0;
+
+                                    const studentClass = app.user?.class;
+                                    const participationClass = app.class_participation || app.event?.class;
+
+                                    return (
+                                        <tr key={app.id}>
+                                            <td className="ps-3">
+                                                <div className="fw-bold text-dark">{app.user?.full_name || "—"}</div>
+                                                <div className="text-muted small">{app.user?.email || "—"}</div>
+                                                <div className="text-muted small font-monospace">{app.user?.phone_number || "—"}</div>
+                                            </td>
+
+                                            <td>
+                                                <div className="fw-semibold text-dark text-truncate" style={{ maxWidth: "250px" }} title={app.event?.name}>
+                                                    {app.event?.name || "—"}
+                                                </div>
+                                                <Badge bg="light" text="dark" className="border">
+                                                    {app.event?.subject || "Общий профиль"}
+                                                </Badge>
+                                            </td>
+
+                                            {/* Класс обучения ученика и класс участия в олимпиаде */}
+                                            <td className="text-center">
+                                                <div className="d-flex align-items-center justify-content-center gap-1">
+                                                    <Badge bg="secondary-subtle" className="text-dark border" title="Класс обучения ученика">
+                                                        {studentClass ? `${studentClass} кл.` : "—"}
+                                                    </Badge>
+                                                    <span className="text-muted small">→</span>
+                                                    <Badge bg="primary-subtle" className="text-primary border border-primary-subtle" title="Класс участия в программе">
+                                                        {participationClass ? `${participationClass} кл.` : "—"}
+                                                    </Badge>
+                                                </div>
+                                            </td>
+
+                                            <td>
+                                                <div className="text-truncate" style={{ maxWidth: "220px" }} title={app.school?.name || app.school?.full_name}>
+                                                    {app.school?.name || app.school?.full_name || "—"}
+                                                </div>
+                                                <small className="text-muted">{app.school?.district_name || "—"}</small>
+                                            </td>
+
+                                            {/* Портфолио: кликабельная карточка */}
+                                            <td className="text-center">
+                                                {hasPortfolio ? (
+                                                    <Button
+                                                        variant="link"
+                                                        className="p-0 text-decoration-none"
+                                                        onClick={() => setSelectedApp(app)}
+                                                        title="Нажмите, чтобы просмотреть ведомость достижений"
+                                                    >
+                                                        <Badge bg="success-subtle" className="text-success border border-success-subtle px-2 py-1 fs-6">
+                                                            {app.portfolio?.score || 0} б.
+                                                        </Badge>
+                                                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                                            {achievementsCount} подтверждений
+                                                        </div>
+                                                    </Button>
+                                                ) : (
+                                                    <Badge bg="secondary-subtle" className="text-muted border">
+                                                        Не прикреплено
+                                                    </Badge>
+                                                )}
+                                            </td>
+
+                                            <td className="text-center">
+                                                <Badge bg={statusMeta.bg as any} className="px-2 py-1">
+                                                    {statusMeta.text}
+                                                </Badge>
+                                            </td>
+
+                                            <td className="text-muted font-monospace small">
+                                                {formatDateTime(app.submitted_at)}
+                                            </td>
+
+                                            <td className="pe-3 text-end">
+                                                <ButtonGroup size="sm">
+                                                    <Button
+                                                        variant="outline-primary"
+                                                        title="Инспектор заявки"
+                                                        onClick={() => setSelectedApp(app)}
+                                                    >
+                                                        <BsEye />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline-success"
+                                                        title="Одобрить заявку"
+                                                        onClick={() => handleStatusChange(app.id, 1, "Одобрено")}
+                                                    >
+                                                        <BsCheckCircle />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline-danger"
+                                                        title="Отклонить заявку"
+                                                        onClick={() => handleStatusChange(app.id, 3, "Отклонено")}
+                                                    >
+                                                        <BsXCircle />
+                                                    </Button>
+                                                </ButtonGroup>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
                             </tbody>
                         </Table>
                     </div>
-                    
-                    <div className="d-flex justify-content-between align-items-center mt-3">
-                        <div className="text-muted small">
-                            Показано заявок: <strong>{displayData.length}</strong>
+                </Card.Body>
+
+                {/* Пагинация */}
+                <Card.Footer className="bg-white border-top py-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+                    <div className="d-flex align-items-center gap-2">
+                        <span className="small text-muted">Записей на страницу:</span>
+                        <Form.Select
+                            size="sm"
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setPage(1);
+                            }}
+                            style={{ width: "80px" }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                        </Form.Select>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                        <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            disabled={page <= 1 || loading}
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        >
+                            <BsChevronLeft /> Назад
+                        </Button>
+                        <span className="small fw-semibold px-2">Страница {page}</span>
+                        <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            disabled={applications.length < limit || loading}
+                            onClick={() => setPage((p) => p + 1)}
+                        >
+                            Вперед <BsChevronRight />
+                        </Button>
+                    </div>
+                </Card.Footer>
+            </Card>
+
+            {/* Модальное окно экспертного отсмотра */}
+            {selectedApp && (
+                <Modal
+                    show={Boolean(selectedApp)}
+                    onHide={() => setSelectedApp(null)}
+                    size="xl"
+                    centered
+                    scrollable
+                >
+                    <Modal.Header closeButton className="bg-light">
+                        <div className="d-flex align-items-center gap-3">
+                            <h5 className="mb-0 fw-bold">Заявка #{selectedApp.id.slice(0, 8)}</h5>
+                            <Badge bg={STATUS_META[selectedApp.status]?.bg as any}>
+                                {STATUS_META[selectedApp.status]?.text}
+                            </Badge>
+                            <span className="text-muted small">
+                                Подано: {formatDateTime(selectedApp.submitted_at)}
+                            </span>
                         </div>
+                    </Modal.Header>
+
+                    <Modal.Body className="p-4 bg-light">
+                        <Row className="g-3">
+                            {/* Левая колонка: Профиль кандидата и учреждение */}
+                            <Col lg={4}>
+                                <div className="d-flex flex-column gap-3">
+                                    {/* Карточка участника */}
+                                    <Card className="border-0 shadow-sm rounded-3">
+                                        <Card.Body className="p-3">
+                                            <div className="d-flex align-items-center gap-2 mb-3 text-primary">
+                                                <BsPersonCircle size={18} />
+                                                <span className="fw-bold small text-uppercase">Участник</span>
+                                            </div>
+
+                                            <div className="mb-2">
+                                                <span className="text-muted small d-block">ФИО</span>
+                                                <span className="fw-bold text-dark fs-6">{selectedApp.user?.full_name || "—"}</span>
+                                            </div>
+
+                                            <div className="d-flex justify-content-between mb-2">
+                                                <div>
+                                                    <span className="text-muted small d-block">Дата рождения</span>
+                                                    <span className="fw-medium text-dark">{formatBirthDate(selectedApp.user?.birth_date)}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted small d-block">Класс обучения</span>
+                                                    <Badge bg="secondary-subtle" className="text-dark border">
+                                                        {selectedApp.user?.class ? `${selectedApp.user.class} класс` : "—"}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-2">
+                                                <span className="text-muted small d-block">Контакты</span>
+                                                <div className="small text-dark">{selectedApp.user?.email || "—"}</div>
+                                                <div className="font-monospace small text-dark">{selectedApp.user?.phone_number || "—"}</div>
+                                            </div>
+                                        </Card.Body>
+                                    </Card>
+
+                                    {/* Карточка школы и программы */}
+                                    <Card className="border-0 shadow-sm rounded-3">
+                                        <Card.Body className="p-3">
+                                            <div className="d-flex align-items-center gap-2 mb-3 text-primary">
+                                                <BsMortarboard size={18} />
+                                                <span className="fw-bold small text-uppercase">Обучение и программа</span>
+                                            </div>
+
+                                            <div className="mb-2">
+                                                <span className="text-muted small d-block">Школа</span>
+                                                <div className="small fw-semibold text-dark lh-sm">
+                                                    {selectedApp.school?.full_name || selectedApp.school?.name || "—"}
+                                                </div>
+                                                <small className="text-muted d-block mt-1">
+                                                    {selectedApp.school?.district_name || "—"}
+                                                </small>
+                                            </div>
+
+                                            <hr className="my-2 text-muted opacity-25" />
+
+                                            <div className="mb-2">
+                                                <span className="text-muted small d-block">Выбранная программа</span>
+                                                <div className="fw-bold text-primary small lh-sm">
+                                                    {selectedApp.event?.name}
+                                                </div>
+                                            </div>
+
+                                            <div className="d-flex justify-content-between align-items-center pt-1">
+                                                <div>
+                                                    <span className="text-muted small d-block">Дисциплина</span>
+                                                    <span className="small fw-medium">{selectedApp.event?.subject || "—"}</span>
+                                                </div>
+                                                <div className="text-end">
+                                                    <span className="text-muted small d-block">Класс участия</span>
+                                                    <Badge bg="primary" className="px-2 py-1">
+                                                        {selectedApp.class_participation} класс
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </Card.Body>
+                                    </Card>
+                                </div>
+                            </Col>
+
+                            {/* Правая колонка: Экспертная ведомость достижений */}
+                            <Col lg={8}>
+                                <Card className="border-0 shadow-sm rounded-3 h-100">
+                                    <Card.Header className="bg-white border-bottom py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                        <div className="d-flex align-items-center gap-2">
+                                            <BsTrophy className="text-warning fs-5" />
+                                            <span className="fw-bold text-dark">Ведомость достижений</span>
+                                        </div>
+
+                                        {selectedApp.portfolio?.file_path && (
+                                            <Button
+                                                as="a"
+                                                href={selectedApp.portfolio.file_path}
+                                                target="_blank"
+                                                rel="noreferrer noopener"
+                                                variant="primary"
+                                                size="sm"
+                                                className="d-inline-flex align-items-center gap-2 shadow-sm"
+                                            >
+                                                <BsFileEarmarkPdf size={16} />
+                                                <span>Открыть презентацию</span>
+                                            </Button>
+                                        )}
+                                    </Card.Header>
+
+                                    <Card.Body className="p-3 d-flex flex-column gap-3">
+                                        {/* Сводный баннер итогового балла */}
+                                        <div className="d-flex justify-content-between align-items-center p-3 rounded-3 bg-success-subtle border border-success-subtle">
+                                            <div>
+                                                <div className="text-success-emphasis small fw-semibold text-uppercase">
+                                                    Итоговый подтвержденный балл
+                                                </div>
+                                                <div className="display-6 fw-bold text-success mb-0 lh-1 mt-1">
+                                                    {selectedApp.portfolio?.score ?? calculatedTotalScore} <span className="fs-5 fw-normal">баллов</span>
+                                                </div>
+                                            </div>
+                                            <Badge bg="success" className="fs-6 px-3 py-2 rounded-pill fw-normal">
+                                                {selectedParsedAchievements.length} подтвержденных пунктов
+                                            </Badge>
+                                        </div>
+
+                                        {/* Комментарий участника */}
+                                        {selectedApp.portfolio?.description && (
+                                            <div className="p-2 px-3 bg-light border rounded-3 small">
+                                                <span className="text-muted fw-semibold me-2">Примечание участника:</span>
+                                                <span>{selectedApp.portfolio.description}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Список подтвержденных олимпиад */}
+                                        {selectedParsedAchievements.length > 0 ? (
+                                            <div className="d-flex flex-column gap-2" style={{ maxHeight: "380px", overflowY: "auto" }}>
+                                                {selectedParsedAchievements.map((item, idx) => (
+                                                    <div
+                                                        key={item.code}
+                                                        className="d-flex justify-content-between align-items-center p-2 px-3 bg-white border rounded-2 shadow-none"
+                                                    >
+                                                        <div className="d-flex align-items-start gap-2 pe-3">
+                                                            <span className="text-muted small fw-semibold mt-1" style={{ minWidth: "20px" }}>
+                                                                {idx + 1}.
+                                                            </span>
+                                                            <div>
+                                                                <div className="fw-semibold text-dark small lh-sm">
+                                                                    {item.olympiadName}
+                                                                </div>
+                                                                <div className="d-flex align-items-center gap-2 mt-1">
+                                                                    <Badge bg="light" text="dark" className="border fw-normal" style={{ fontSize: "0.75rem" }}>
+                                                                        {item.category}
+                                                                    </Badge>
+                                                                    <Badge
+                                                                        bg={
+                                                                            item.resultType === "Победитель"
+                                                                                ? "warning-subtle"
+                                                                                : item.resultType === "Призёр"
+                                                                                    ? "info-subtle"
+                                                                                    : "primary-subtle"
+                                                                        }
+                                                                        className={
+                                                                            item.resultType === "Победитель"
+                                                                                ? "text-warning-emphasis border border-warning"
+                                                                                : item.resultType === "Призёр"
+                                                                                    ? "text-info-emphasis border border-info"
+                                                                                    : "text-primary border border-primary"
+                                                                        }
+                                                                        style={{ fontSize: "0.75rem" }}
+                                                                    >
+                                                                        <BsAward className="me-1" />
+                                                                        {item.resultType}
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Блок баллов: строго без переноса строки */}
+                                                        <div className="text-end text-nowrap flex-shrink-0 ps-2" style={{ minWidth: "90px" }}>
+                                                            <span className="badge bg-success-subtle text-success border border-success-subtle fs-6 font-monospace py-1 px-2">
+                                                                +{item.score} б.
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-muted bg-light border rounded">
+                                                Участник не указал индивидуальные достижения в портфолио
+                                            </div>
+                                        )}
+                                    </Card.Body>
+                                </Card>
+                            </Col>
+                        </Row>
+                    </Modal.Body>
+
+                    <Modal.Footer className="bg-light d-flex justify-content-between">
+                        <Button variant="secondary" onClick={() => setSelectedApp(null)}>
+                            Закрыть
+                        </Button>
                         <div className="d-flex gap-2">
-                            <Button 
-                                variant="link" 
-                                onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
-                                size="sm"
+                            <Button
+                                variant="outline-danger"
+                                onClick={() => handleStatusChange(selectedApp.id, 3, "Отклонено")}
                             >
-                                ↑ Наверх
+                                Отклонить
+                            </Button>
+                            <Button
+                                variant="success"
+                                onClick={() => handleStatusChange(selectedApp.id, 1, "Одобрено")}
+                            >
+                                Одобрить заявку
                             </Button>
                         </div>
-                    </div>
-                </>
+                    </Modal.Footer>
+                </Modal>
             )}
-        </div>
+        </Container>
     );
 };
 

@@ -11,10 +11,11 @@ import (
 	"main/internal/lib/verification"
 	models "main/internal/models/applications"
 	"main/internal/models/event"
+	"main/internal/models/participant"
 	"main/internal/models/portfolio"
 	"main/internal/models/school"
-	"main/internal/models/user"
 	"main/internal/storage/orm"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,9 +38,14 @@ type ApplicationRepository interface {
 	GetCount(ctx context.Context, orm orm.ORM) (int64, error)
 }
 
-type UserRepository interface {
-	GetByListId(ctx context.Context, orm orm.ORM, ids []uuid.UUID) ([]user.User, error)
+type ParticipantsRepository interface {
+	GetByUserIdListWithPreload(ctx context.Context, orm orm.ORM, ids []uuid.UUID) ([]participant.Participant, error)
 }
+
+//
+//type UserRepository interface {
+//	GetByListId(ctx context.Context, orm orm.ORM, ids []uuid.UUID) ([]user.User, error)
+//}
 
 type SchoolRepository interface {
 	GetByListId(ctx context.Context, orm orm.ORM, ids []uuid.UUID) ([]school.School, error)
@@ -54,28 +60,28 @@ type PortfolioRepository interface {
 }
 
 type ApplicationService struct {
-	db            orm.ORM
-	log           *slog.Logger
-	repository    ApplicationRepository
-	userRepo      UserRepository
-	schoolRepo    SchoolRepository
-	eventRepo     EventRepository
-	portfolioRepo PortfolioRepository
+	db              orm.ORM
+	log             *slog.Logger
+	repository      ApplicationRepository
+	participantRepo ParticipantsRepository
+	schoolRepo      SchoolRepository
+	eventRepo       EventRepository
+	portfolioRepo   PortfolioRepository
 }
 
 func NewApplicationService(log *slog.Logger, db orm.ORM, repo ApplicationRepository,
-	userRepo UserRepository,
+	participantRepo ParticipantsRepository,
 	schoolRepo SchoolRepository,
 	eventRepo EventRepository,
 	portfolioRepo PortfolioRepository) *ApplicationService {
 	return &ApplicationService{
-		db:            db,
-		log:           log,
-		repository:    repo,
-		userRepo:      userRepo,
-		schoolRepo:    schoolRepo,
-		eventRepo:     eventRepo,
-		portfolioRepo: portfolioRepo,
+		db:              db,
+		log:             log,
+		repository:      repo,
+		participantRepo: participantRepo,
+		schoolRepo:      schoolRepo,
+		eventRepo:       eventRepo,
+		portfolioRepo:   portfolioRepo,
 	}
 }
 
@@ -440,14 +446,15 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 		eventIDs = append(eventIDs, id)
 	}
 
-	users, err := s.userRepo.GetByListId(ctx, s.db, userIDs)
+	// Загружаем участников сразу с предварительно подгруженным User
+	participants, err := s.participantRepo.GetByUserIdListWithPreload(ctx, s.db, userIDs)
 	if err != nil {
-		log.Error("failed get users", liblogger.Err(err))
+		log.Error("failed get participants with user preload", liblogger.Err(err))
 		return nil, errs.ErrInternalError
 	}
-	userMap := make(map[uuid.UUID]user.User, len(users))
-	for _, u := range users {
-		userMap[u.ID] = u
+	participantMap := make(map[uuid.UUID]participant.Participant, len(participants))
+	for _, p := range participants {
+		participantMap[p.UserId] = p
 	}
 
 	schools, err := s.schoolRepo.GetByListId(ctx, s.db, schoolIDs)
@@ -462,7 +469,7 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 
 	portfolios, err := s.portfolioRepo.GetByApplicationIDList(ctx, s.db, appIds)
 	if err != nil {
-		log.Error("failed get applications", liblogger.Err(err))
+		log.Error("failed get portfolios", liblogger.Err(err))
 		return nil, errs.ErrInternalError
 	}
 
@@ -483,7 +490,8 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 
 	res := make([]ApplicationDto.FullApplicationDetailsDTO, 0, len(apps))
 	for _, app := range apps {
-		u := userMap[app.UserID]
+		part := participantMap[app.UserID]
+		u := part.User
 		sc := schoolMap[app.SchoolID]
 		ev := eventMap[app.EventID]
 		pf := portfolioMap[app.ID]
@@ -491,6 +499,11 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 		fullName := strings.TrimSpace(u.Surname + " " + u.Firstname + " " + u.Patronymic)
 		if fullName == "" {
 			fullName = u.Email
+		}
+
+		classStr := ""
+		if part.ClassNumber > 0 {
+			classStr = strconv.Itoa(part.ClassNumber)
 		}
 
 		res = append(res, ApplicationDto.FullApplicationDetailsDTO{
@@ -504,13 +517,15 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 				Email:       u.Email,
 				FullName:    fullName,
 				PhoneNumber: u.PhoneNumber,
+				Class:       classStr,
 				BirthDate:   u.BirthDate,
 			},
 			School: ApplicationDto.SchoolDetailsDTO{
-				ID:         sc.ID.String(),
-				FullName:   sc.FullName,
-				Name:       sc.Name,
-				DistrictID: sc.DistrictID.String(),
+				ID:           sc.ID.String(),
+				FullName:     sc.FullName,
+				Name:         sc.Name,
+				DistrictID:   sc.DistrictID.String(),
+				DistrictName: sc.District.Name,
 			},
 			Event: ApplicationDto.EventDetailsDTO{
 				ID:      ev.ID.String(),

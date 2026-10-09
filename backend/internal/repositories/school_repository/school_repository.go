@@ -29,8 +29,10 @@ func (r *SchoolRepository) GetByListId(ctx context.Context, orm orm.ORM, ids []u
 		return []school.School{}, nil
 	}
 
+	preload := "District"
+
 	var schools []school.School
-	err := orm.Find(ctx, school.School{}, nil, nil, nil, nil, nil, &schools, "id IN ?", ids)
+	err := orm.Find(ctx, school.School{}, &preload, nil, nil, nil, nil, &schools, "id IN ?", ids)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

@@ -14,3 +14,49 @@ export interface UpdateApplicationDTO {
     profile: string;               // профиль олимпиады
     class_participation: number;   // класс участия (category)
 }
+
+export interface UserDetailsDTO {
+    id: string;
+    email: string;
+    full_name: string;
+    phone_number: string;
+    birth_date: string;
+    class: number;
+}
+
+export interface SchoolDetailsDTO {
+    id: string;
+    full_name: string;
+    name: string;
+    district_id: string;
+    district_name?: string;
+}
+
+export interface EventDetailsDTO {
+    id: string;
+    name: string;
+    subject: string;
+    class: number;
+    status: number;
+}
+
+export interface PortfolioResponseDTO {
+    id: string;
+    application_id: string;
+    description: string;
+    score: number;
+    code_achievement: string[];
+    file_path: string;
+}
+
+export interface FullApplicationDetailsDTO {
+    id: string;
+    status: number;
+    class_participation: number;
+    submitted_at: string;
+    updated_at: string;
+    user: UserDetailsDTO;
+    school: SchoolDetailsDTO;
+    event: EventDetailsDTO;
+    portfolio?: PortfolioResponseDTO | null;
+}

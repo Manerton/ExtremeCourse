@@ -1,7 +1,7 @@
 import axios from "axios";
-import { APPLICATION } from "../config/api";
+import {API_CONFIG, APPLICATION} from "../config/api";
 import {ApplicationEvent, Event, MainEvent} from "../components/types/event";
-import { Application } from "../components/types/application";
+import { Application, FullApplicationDetailsDTO } from "../components/types/application";
 
 export async function axiosGetApplicationEvents(token: string, userId: string) {
     const res = await axios.get(
@@ -158,4 +158,20 @@ export async function axiosGenerateCode(token: string, eventId: string) {
     }
   )
   return res.data
+}
+
+
+export async function axiosGetFullApplications(
+    token: string,
+    page: number = 1,
+    limit: number = 20
+): Promise<FullApplicationDetailsDTO[]> {
+    const res = await axios.get(API_CONFIG.ALLAPPLICATIONS, {
+        params: { page, limit },
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+    });
+
+    const rawData = res.data?.data ?? res.data;
+    return Array.isArray(rawData) ? rawData : [];
 }
