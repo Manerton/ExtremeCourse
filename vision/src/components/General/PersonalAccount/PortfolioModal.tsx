@@ -87,7 +87,7 @@ const PortfolioModal: React.FC<Props> = ({
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    const presentationTemplateUrl = "https://disk.yandex.ru/i/AO145eT0WjEwfQ";
+    const presentationTemplateUrl = "https://disk.yandex.ru/i/YeH0I6WfuzYrwA";
 
     const [minobrSearch, setMinobrSearch] = useState("");
     const [showAllSubjects, setShowAllSubjects] = useState(false);
