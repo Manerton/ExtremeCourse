@@ -27,11 +27,16 @@ import {
     BsChevronLeft,
     BsChevronRight,
     BsAward,
+    BsSortDown,
+    BsSortUp,
+    BsArrowDownUp,
+    BsFileEarmarkExcel,
 } from "react-icons/bs";
 import { useAuth } from "../../Helpers/AuthContext";
 import { FullApplicationDetailsDTO } from "../../types/application";
 import { axiosGetFullApplications } from "../../../requests/ApplicationRequests";
 import { parseAchievement, ParsedAchievement } from "../../../utils/achievementCatalog";
+import { axiosDownloadApplicationsExcel, buildFileDownloadUrl } from "../../../requests/FilesRequests";
 
 // Статусы заявок
 const STATUS_META: Record<number, { text: string; bg: string }> = {
@@ -39,6 +44,7 @@ const STATUS_META: Record<number, { text: string; bg: string }> = {
     1: { text: "Одобрено", bg: "success" },
     3: { text: "Отклонено", bg: "danger" },
 };
+
 
 // Форматирование даты рождения (строго число, месяц, год)
 const formatBirthDate = (dateStr?: string) => {
@@ -76,6 +82,7 @@ const ApplicationsPage: React.FC = () => {
     const [applications, setApplications] = useState<FullApplicationDetailsDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
 
     // Пагинация
     const [page, setPage] = useState(1);
@@ -85,6 +92,10 @@ const ApplicationsPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
+
+    // Сортировка по баллам
+    type SortDir = "asc" | "desc" | null;
+    const [sortByScore, setSortByScore] = useState<SortDir>(null);
 
     // Модальное окно детального просмотра
     const [selectedApp, setSelectedApp] = useState<FullApplicationDetailsDTO | null>(null);
@@ -107,6 +118,33 @@ const ApplicationsPage: React.FC = () => {
         loadData(page, limit);
     }, [page, limit, accessToken]);
 
+    // Экспорт Excel
+    const handleExportExcel = async () => {
+        if (!accessToken) return;
+        setExporting(true);
+        setError(null);
+        try {
+            const { blob, fileName } = await axiosDownloadApplicationsExcel(accessToken);
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err: any) {
+            setError(
+                err.response?.data?.message ||
+                err.message ||
+                "Не удалось выгрузить Excel"
+            );
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const uniqueSubjects = useMemo(() => {
         const subs = new Set<string>();
         applications.forEach((a) => {
@@ -117,7 +155,8 @@ const ApplicationsPage: React.FC = () => {
 
     const filteredApps = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
-        return applications.filter((app) => {
+
+        const filtered = applications.filter((app) => {
             const userName = (app.user?.full_name || "").toLowerCase();
             const email = (app.user?.email || "").toLowerCase();
             const phone = (app.user?.phone_number || "").toLowerCase();
@@ -138,7 +177,19 @@ const ApplicationsPage: React.FC = () => {
 
             return matchesQuery && matchesStatus && matchesSubject;
         });
-    }, [applications, searchQuery, statusFilter, subjectFilter]);
+
+        // Сортировка по баллам портфолио
+        if (sortByScore) {
+            const dir = sortByScore === "asc" ? 1 : -1;
+            filtered.sort((a, b) => {
+                const aScore = a.portfolio?.score ?? 0;
+                const bScore = b.portfolio?.score ?? 0;
+                return (aScore - bScore) * dir;
+            });
+        }
+
+        return filtered;
+    }, [applications, searchQuery, statusFilter, subjectFilter, sortByScore]);
 
     // Преобразуем коды выбранной заявки в структурированный список достижений
     const selectedParsedAchievements = useMemo<ParsedAchievement[]>(() => {
@@ -173,6 +224,22 @@ const ApplicationsPage: React.FC = () => {
                     </p>
                 </div>
                 <div className="d-flex gap-2">
+                    <Button
+                        variant="outline-success"
+                        size="sm"
+                        className="d-inline-flex align-items-center gap-1"
+                        onClick={handleExportExcel}
+                        disabled={exporting || loading}
+                        title="Выгрузить список заявок в Excel"
+                    >
+                        {exporting ? (
+                            <Spinner as="span" animation="border" size="sm" />
+                        ) : (
+                            <BsFileEarmarkExcel />
+                        )}
+                        <span>{exporting ? "Экспорт..." : "Экспорт в Excel"}</span>
+                    </Button>
+
                     <Button
                         variant="outline-primary"
                         size="sm"
@@ -247,9 +314,33 @@ const ApplicationsPage: React.FC = () => {
                             <tr>
                                 <th className="ps-3 py-3">Кандидат / Контакты</th>
                                 <th className="py-3">Программа олимпиады</th>
+                                <th
+                                    className="py-3 text-center"
+                                    style={{ cursor: "pointer", userSelect: "none" }}
+                                    onClick={() => {
+                                        setSortByScore((prev) =>
+                                            prev === null ? "desc" : prev === "desc" ? "asc" : null
+                                        );
+                                    }}
+                                    title={
+                                        sortByScore === null
+                                            ? "Сортировать по убыванию баллов"
+                                            : sortByScore === "desc"
+                                                ? "Сортировать по возрастанию баллов"
+                                                : "Сбросить сортировку"
+                                    }
+                                >
+                                    <span className="d-inline-flex align-items-center gap-1 justify-content-center">
+                                        Портфолио (Баллы)
+                                        {sortByScore === "desc" && <BsSortDown />}
+                                        {sortByScore === "asc" && <BsSortUp />}
+                                        {sortByScore === null && (
+                                            <BsArrowDownUp className="text-muted opacity-50" size={12} />
+                                        )}
+                                    </span>
+                                </th>
                                 <th className="py-3 text-center">Класс (уч. / заявка)</th>
                                 <th className="py-3">Школа / Район</th>
-                                <th className="py-3 text-center">Портфолио (Баллы)</th>
                                 <th className="py-3 text-center">Статус</th>
                                 <th className="py-3">Подано</th>
                                 <th className="pe-3 py-3 text-end">Действия</th>
@@ -295,6 +386,42 @@ const ApplicationsPage: React.FC = () => {
                                                 </Badge>
                                             </td>
 
+                                            {/* Портфолио: кликабельная карточка */}
+                                            <td className="text-center">
+                                                {hasPortfolio ? (
+                                                    <div
+                                                        className="d-inline-block text-decoration-none"
+                                                        onClick={() => setSelectedApp(app)}
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter" || e.key === " ") {
+                                                                e.preventDefault();
+                                                                setSelectedApp(app);
+                                                            }
+                                                        }}
+                                                        title="Нажмите, чтобы просмотреть ведомость достижений"
+                                                    >
+                                                        <Badge
+                                                            bg="success-subtle"
+                                                            className="text-success border border-success-subtle px-2 py-1 fs-6"
+                                                        >
+                                                            {app.portfolio?.score || 0} б.
+                                                        </Badge>
+                                                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                                            {achievementsCount} достижений
+                                                        </div>
+                                                        <div className="small text-primary mt-1">
+                                                            <BsEye size={11} /> Открыть
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <Badge bg="secondary-subtle" className="text-muted border">
+                                                        Не прикреплено
+                                                    </Badge>
+                                                )}
+                                            </td>
+
                                             {/* Класс обучения ученика и класс участия в олимпиаде */}
                                             <td className="text-center">
                                                 <div className="d-flex align-items-center justify-content-center gap-1">
@@ -313,29 +440,6 @@ const ApplicationsPage: React.FC = () => {
                                                     {app.school?.name || app.school?.full_name || "—"}
                                                 </div>
                                                 <small className="text-muted">{app.school?.district_name || "—"}</small>
-                                            </td>
-
-                                            {/* Портфолио: кликабельная карточка */}
-                                            <td className="text-center">
-                                                {hasPortfolio ? (
-                                                    <Button
-                                                        variant="link"
-                                                        className="p-0 text-decoration-none"
-                                                        onClick={() => setSelectedApp(app)}
-                                                        title="Нажмите, чтобы просмотреть ведомость достижений"
-                                                    >
-                                                        <Badge bg="success-subtle" className="text-success border border-success-subtle px-2 py-1 fs-6">
-                                                            {app.portfolio?.score || 0} б.
-                                                        </Badge>
-                                                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                                            {achievementsCount} подтверждений
-                                                        </div>
-                                                    </Button>
-                                                ) : (
-                                                    <Badge bg="secondary-subtle" className="text-muted border">
-                                                        Не прикреплено
-                                                    </Badge>
-                                                )}
                                             </td>
 
                                             <td className="text-center">
@@ -536,35 +640,40 @@ const ApplicationsPage: React.FC = () => {
                                             <span className="fw-bold text-dark">Ведомость достижений</span>
                                         </div>
 
-                                        {selectedApp.portfolio?.file_path && (
-                                            <Button
-                                                as="a"
-                                                href={selectedApp.portfolio.file_path}
-                                                target="_blank"
-                                                rel="noreferrer noopener"
-                                                variant="primary"
-                                                size="sm"
-                                                className="d-inline-flex align-items-center gap-2 shadow-sm"
-                                            >
-                                                <BsFileEarmarkPdf size={16} />
-                                                <span>Открыть презентацию</span>
-                                            </Button>
-                                        )}
+                                        {selectedApp.portfolio?.file_path && (() => {
+                                            const downloadUrl = buildFileDownloadUrl(selectedApp.portfolio.file_path);
+                                            if (!downloadUrl) return null;
+
+                                            return (
+                                                <Button
+                                                    as="a"
+                                                    href={downloadUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer noopener"
+                                                    variant="primary"
+                                                    size="sm"
+                                                    className="d-inline-flex align-items-center gap-2 shadow-sm"
+                                                >
+                                                    <BsFileEarmarkPdf size={16} />
+                                                    <span>Скачать презентацию</span>
+                                                </Button>
+                                            );
+                                        })()}
                                     </Card.Header>
 
                                     <Card.Body className="p-3 d-flex flex-column gap-3">
                                         {/* Сводный баннер итогового балла */}
-                                        <div className="d-flex justify-content-between align-items-center p-3 rounded-3 bg-success-subtle border border-success-subtle">
+                                        <div className="d-flex justify-content-between align-items-center p-3 rounded-3 bg-primary-subtle border border-primary-subtle">
                                             <div>
-                                                <div className="text-success-emphasis small fw-semibold text-uppercase">
-                                                    Итоговый подтвержденный балл
+                                                <div className="text-primary-emphasis small fw-semibold text-uppercase">
+                                                    Предварительный балл
                                                 </div>
-                                                <div className="display-6 fw-bold text-success mb-0 lh-1 mt-1">
+                                                <div className="display-6 fw-bold text-primary mb-0 lh-1 mt-1">
                                                     {selectedApp.portfolio?.score ?? calculatedTotalScore} <span className="fs-5 fw-normal">баллов</span>
                                                 </div>
                                             </div>
-                                            <Badge bg="success" className="fs-6 px-3 py-2 rounded-pill fw-normal">
-                                                {selectedParsedAchievements.length} подтвержденных пунктов
+                                            <Badge bg="primary" className="fs-6 px-3 py-2 rounded-pill fw-normal">
+                                                {selectedParsedAchievements.length} заявленных пунктов
                                             </Badge>
                                         </div>
 
@@ -622,7 +731,7 @@ const ApplicationsPage: React.FC = () => {
 
                                                         {/* Блок баллов: строго без переноса строки */}
                                                         <div className="text-end text-nowrap flex-shrink-0 ps-2" style={{ minWidth: "90px" }}>
-                                                            <span className="badge bg-success-subtle text-success border border-success-subtle fs-6 font-monospace py-1 px-2">
+                                                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 font-monospace py-1 px-2">
                                                                 +{item.score} б.
                                                             </span>
                                                         </div>

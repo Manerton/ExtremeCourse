@@ -1,16 +1,14 @@
 import { useState } from "react";
-import { Nav, Button } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Nav, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import {
   HouseDoor,
   People,
-  PersonBadge,
-  FileEarmarkText,
-  CreditCard,
-  CalendarCheck,
   FileText,
   BoxArrowLeft,
   PersonCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "react-bootstrap-icons";
 
 import ThemeToggleButton from "../../Helpers/ThemeToggleButton";
@@ -19,186 +17,127 @@ import { useAuth } from "../../Helpers/AuthContext";
 const AdminSidebar: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
+  const location = useLocation();
 
-  const toggleSidebar = () => setCollapsed(!collapsed);
+  const toggleSidebar = () => setCollapsed((c) => !c);
+
+  /** Обёртка: при сворачивании показывает тултип с названием */
+  const renderLink = (
+      to: string,
+      icon: React.ReactNode,
+      label: string,
+      extraClass = ""
+  ) => {
+    const link = (
+        <NavLink
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) =>
+                `sidebar-link d-flex align-items-center ${extraClass} ${
+                    isActive ? "sidebar-link--active" : ""
+                }`
+            }
+        >
+          <span className="sidebar-link__icon">{icon}</span>
+          {!collapsed && <span className="sidebar-link__label">{label}</span>}
+        </NavLink>
+    );
+
+    return collapsed ? (
+        <OverlayTrigger
+            placement="right"
+            overlay={<Tooltip>{label}</Tooltip>}
+        >
+          {link}
+        </OverlayTrigger>
+    ) : (
+        link
+    );
+  };
 
   return (
-    <div
-      className={`d-flex flex-column justify-content-between bg-dark text-white border-end ${collapsed ? "px-2" : "px-3"
-        }`}
-      style={{
-        width: collapsed ? "70px" : "250px",
-        height: "100vh",
-        position: "sticky",
-        top: 0,
-        zIndex: 1020,
-        transition: "width 0.3s",
-      }}
-    >
-      {/* Верхняя часть: профиль */}
-      <div>
-        <div className="d-flex align-items-center justify-content-between py-3">
-          <div className="d-flex align-items-center">
-            <PersonCircle size={24} className="me-2" />
+      <aside
+          className={`admin-sidebar bg-dark text-white d-flex flex-column justify-content-between ${
+              collapsed ? "admin-sidebar--collapsed" : ""
+          }`}
+      >
+        {/* ===== ВЕРХ: Профиль ===== */}
+        <div>
+          <div className="admin-sidebar__profile d-flex align-items-center px-3 py-3">
+            <PersonCircle size={28} className="flex-shrink-0 text-primary" />
             {!collapsed && user && (
-              <div>
-                <strong>{user.Email}</strong>
-                <div className="small">
-                  id-{user.id}, role-{user.role}
+                <div className="ms-2 overflow-hidden">
+                  <div className="fw-semibold text-truncate small" title={user.Email}>
+                    {user.Email}
+                  </div>
                 </div>
-              </div>
             )}
           </div>
+
+          <hr className="border-secondary opacity-25 my-0" />
+
+          {/* ===== НАВИГАЦИЯ ===== */}
+          <Nav className="flex-column py-2">
+            {!collapsed && (
+                <div className="sidebar-section-label px-3 pt-2 pb-1">
+                  Разделы
+                </div>
+            )}
+
+            {renderLink("/", <HouseDoor size={18} />, "На главную")}
+
+            {user?.role === 1 && (
+                <>
+                  {!collapsed && (
+                      <div className="sidebar-section-label px-3 pt-3 pb-1">
+                        Администрирование
+                      </div>
+                  )}
+
+                  {renderLink(
+                      "/AdminPanel/UserList",
+                      <People size={18} />,
+                      "Пользователи"
+                  )}
+
+                  {renderLink(
+                      "/AdminPanel/AllApplications",
+                      <FileText size={18} />,
+                      "Рассмотрение заявок"
+                  )}
+                </>
+            )}
+          </Nav>
+        </div>
+
+        {/* ===== НИЗ: Тема + Выход ===== */}
+        <div className="px-3 pb-3 d-flex flex-column gap-2">
+          <hr className="border-secondary opacity-25 my-1" />
+
           <Button
-            variant="link"
-            className="text-white p-0 ms-auto"
-            onClick={toggleSidebar}
+              variant="outline-danger"
+              size="sm"
+              onClick={logout}
+              className={`d-flex align-items-center justify-content-center gap-2 ${
+                  collapsed ? "px-2" : ""
+              }`}
+              title="Выйти"
           >
-            <span style={{ fontSize: "1.2rem" }}>{collapsed ? "»" : "«"}</span>
+            <BoxArrowLeft size={16} />
+            {!collapsed && <span>Выйти</span>}
           </Button>
         </div>
 
-        <hr className="border-secondary" />
-
-        {/* Навигация */}
-        <Nav className="flex-column gap-2">
-          <div className="text-uppercase small px-2">
-            {!collapsed && "Разделы"}
-          </div>
-
-          <Nav.Link
-            as={Link}
-            to="/"
-            className="text-white d-flex align-items-center"
-          >
-            <HouseDoor className="me-2" />
-            {!collapsed && "На главную"}
-          </Nav.Link>
-
-          {/*<Nav.Link*/}
-          {/*  as={Link}*/}
-          {/*  to={`/applications/user/${user?.id}`}*/}
-          {/*  className="text-white d-flex align-items-center"*/}
-          {/*>*/}
-          {/*  <FileText className="me-2" />*/}
-          {/*  {!collapsed && "Статус заявки"}*/}
-          {/*</Nav.Link>*/}
-
-          {/* Админские ссылки */}
-          {user?.role === 1 && (
-            <>
-              <Nav.Link
-                as={Link}
-                to="/AdminPanel/UserList"
-                className="text-white d-flex align-items-center"
-              >
-                <People className="me-2" />
-                {!collapsed && "Пользователи"}
-              </Nav.Link>
-
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/olymp-admin/participant/index"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <PersonBadge className="me-2" />*/}
-              {/*  {!collapsed && "Участники"}*/}
-              {/*</Nav.Link>*/}
-
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/olymp-admin/school/index"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <FileEarmarkText className="me-2" />*/}
-              {/*  {!collapsed && "Школы"}*/}
-              {/*</Nav.Link>*/}
-
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/olymp-admin/report/index"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <CreditCard className="me-2" />*/}
-              {/*  {!collapsed && "Отчеты"}*/}
-              {/*</Nav.Link>*/}
-
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/link-access"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <CreditCard className="me-2" />*/}
-              {/*  {!collapsed && "Ссылки доступа"}*/}
-              {/*</Nav.Link>*/}
-              {/* 
-
-              <Nav.Link
-                as={Link}
-                to="/olymp-admin/event/index"
-                className="text-white d-flex align-items-center"
-              >
-                <CalendarCheck className="me-2" />
-                {!collapsed && "Олимпиады"}
-              </Nav.Link> */}
-
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/list-olympiads"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <CalendarCheck className="me-2" />*/}
-              {/*  {!collapsed && "Олимпиады"}*/}
-              {/*</Nav.Link>*/}
-
-              <Nav.Link
-                as={Link}
-                to="/AdminPanel/AllApplications"
-                className="text-white d-flex align-items-center"
-              >
-                <FileText className="me-2" />
-                {!collapsed && "Рассмотрение заявок"}
-
-              </Nav.Link>
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/applied-list"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <FileText className="me-2" />*/}
-              {/*  {!collapsed && "Заявки по предмету"}*/}
-              {/*</Nav.Link>*/}
-
-
-              {/*<Nav.Link*/}
-              {/*  as={Link}*/}
-              {/*  to="/approval-applied-list"*/}
-              {/*  className="text-white d-flex align-items-center"*/}
-              {/*>*/}
-              {/*  <FileText className="me-2" />*/}
-              {/*  {!collapsed && "Одобрение заявок по предметам"}*/}
-              {/*</Nav.Link>*/}
-
-            </>
-          )}
-        </Nav>
-      </div>
-
-      {/* Нижняя часть: Тема и выход */}
-      <div className="d-flex flex-column pb-3 justify-content-center align-items-center">
-        <div className="mb-4">
-          <ThemeToggleButton />
-        </div>
-
-        <Nav.Link
-          onClick={logout}
-          className="text-danger align-items-center px-2"
+        {/* ===== Кнопка сворачивания (по центру правого края) ===== */}
+        <button
+            type="button"
+            onClick={toggleSidebar}
+            className="admin-sidebar__toggle"
+            title={collapsed ? "Развернуть" : "Свернуть"}
         >
-          <BoxArrowLeft className="me-2" />
-          {!collapsed && "Выйти"}
-        </Nav.Link>
-      </div>
-    </div>
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+      </aside>
   );
 };
 

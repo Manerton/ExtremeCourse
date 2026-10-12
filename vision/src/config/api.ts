@@ -20,6 +20,11 @@ export const API_CONFIG = {
     ALLAPPLICATIONS: `${API_URL}/applications/full-details`,
 };
 
+export const FILES = {
+    FILES_DOWNLOAD: `${API_URL}/files/download`,
+    FILES_DOWNLOAD_EXCEL: `${API_URL}/applications/export-excel`,
+}
+
 export const AUTH = {
     login: `${API_URL}/users/login`,
     logout: `${API_URL}/users/logout`,

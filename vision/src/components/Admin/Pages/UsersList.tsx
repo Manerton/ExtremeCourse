@@ -139,7 +139,6 @@ const UsersListPage: React.FC = () => {
                                 <th className="py-3 text-center">Класс</th>
                                 <th className="py-3 text-center">Пол</th>
                                 <th className="py-3">Дата рождения</th>
-                                <th className="py-3 text-center">Статус</th>
                                 <th className="py-3">Гражданство</th>
                                 <th className="py-3 text-center">ОВЗ</th>
                                 <th className="py-3">Родитель / Представитель</th>
@@ -191,19 +190,6 @@ const UsersListPage: React.FC = () => {
                                         {/* Дата рождения */}
                                         <td className="text-muted font-monospace small">
                                             {formatDate(user.birthdate)}
-                                        </td>
-
-                                        {/* Активирован */}
-                                        <td className="text-center">
-                                            {user.activated ? (
-                                                <Badge bg="success-subtle" className="text-success border border-success-subtle d-inline-flex align-items-center gap-1">
-                                                    <CheckCircleFill size={10} /> Активен
-                                                </Badge>
-                                            ) : (
-                                                <Badge bg="danger-subtle" className="text-danger border border-danger-subtle d-inline-flex align-items-center gap-1">
-                                                    <XCircleFill size={10} /> Нет
-                                                </Badge>
-                                            )}
                                         </td>
 
                                         {/* Гражданство */}
