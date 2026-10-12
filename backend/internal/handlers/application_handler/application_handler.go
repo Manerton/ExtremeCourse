@@ -8,8 +8,10 @@ import (
 	"main/internal/lib/parser"
 	"main/internal/lib/response"
 	"main/internal/services/application_service"
+	"main/internal/services/excel_service"
 	"net/http"
 	"strings"
+	"time"
 
 	"log/slog"
 
@@ -19,13 +21,14 @@ import (
 )
 
 type ApplicationHandler struct {
-	service *application_service.ApplicationService
-	logger  *slog.Logger
+	service      *application_service.ApplicationService
+	excelService *excel_service.ExcelService
+	logger       *slog.Logger
 }
 
 // Конструктор обработчика заявок
-func NewApplicationHandler(service *application_service.ApplicationService, logger *slog.Logger) *ApplicationHandler {
-	return &ApplicationHandler{service: service, logger: logger}
+func NewApplicationHandler(service *application_service.ApplicationService, excelService *excel_service.ExcelService, logger *slog.Logger) *ApplicationHandler {
+	return &ApplicationHandler{service: service, excelService: excelService, logger: logger}
 }
 
 // @Summary Get all full applications
@@ -100,6 +103,61 @@ func (h *ApplicationHandler) ReviewApplication(w http.ResponseWriter, r *http.Re
 	}
 
 	render.JSON(w, r, response.SuccessResponse("status updated"))
+}
+
+// ExportApplicationsToExcel выгружает полный список заявок в Excel-файл
+// @Summary Export applications to Excel
+// @Security BearerAuth
+// @Description Выгрузка всех заявок (с фильтрацией по странице/лимиту при необходимости) в формате XLSX
+// @Tags applications
+// @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param page query int false "Номер страницы"
+// @Param limit query int false "Элементов на странице"
+// @Success 200 {file} file "applications.xlsx"
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/applications/export-excel [get]
+func (h *ApplicationHandler) ExportApplicationsToExcel(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// 1. Считываем пагинацию (если переданы, иначе nil = выгрузить все)
+	page, limit, err := parser.ParsePageLimit(r.URL.Query().Get("page"), r.URL.Query().Get("limit"))
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrBadRequest.Wrap("invalid page or limit")))
+		return
+	}
+
+	// 2. Получаем все собранные данные через уже готовый метод
+	apps, err := h.service.GetAllFullApplications(ctx, page, limit)
+	if err != nil {
+		h.logger.Error("failed to get applications for export", slog.Any("error", err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	// 3. Формируем Excel-файл
+	buf, err := h.excelService.ExportApplicationsToExcel(ctx, apps)
+	if err != nil {
+		h.logger.Error("failed to generate excel file", slog.Any("error", err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	// 4. Задаем заголовки для скачивания файла
+	fileName := fmt.Sprintf("applications_%s.xlsx", time.Now().Format("20060102_150405"))
+
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+	w.WriteHeader(http.StatusOK)
+
+	// 5. Отдаем байты в поток ответа
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		h.logger.Error("failed to write excel response", slog.Any("error", err))
+	}
 }
 
 func (h *ApplicationHandler) GetCountApplications(w http.ResponseWriter, r *http.Request) {

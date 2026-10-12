@@ -1,5 +1,10 @@
 package achievement_dictionary
 
+import (
+	"fmt"
+	"strings"
+)
+
 type AchievementType string
 
 // Базовые олимпиады
@@ -336,4 +341,68 @@ func GetScore(ach AchievementType) (int, bool) {
 		return info.Score, true
 	}
 	return 0, false
+}
+
+func FormatAchievement(code string) string {
+	if code == "" {
+		return ""
+	}
+
+	achType := AchievementType(code)
+	info, exists := AchievementRegistry[achType]
+	if !exists {
+		// Если код не найден в реестре, возвращаем как есть
+		return code
+	}
+
+	// Определяем статус
+	status := ""
+	switch {
+	case strings.HasSuffix(code, "_WINNER") && !strings.HasSuffix(code, "_PRIZE_WINNER"):
+		status = "Победитель"
+	case strings.HasSuffix(code, "_PRIZE_WINNER"):
+		status = "Призер"
+	case code == string(SiriusParticipant):
+		status = "Участник"
+	}
+
+	if status != "" {
+		return fmt.Sprintf("%s (%s)", info.OlympiadName, status)
+	}
+
+	return info.OlympiadName
+}
+
+func FormatAchievements(codes []string) string {
+	if len(codes) == 0 {
+		return ""
+	}
+
+	formatted := make([]string, 0, len(codes))
+	for _, code := range codes {
+		res := FormatAchievement(code)
+		if res != "" {
+			formatted = append(formatted, res)
+		}
+	}
+
+	if len(formatted) == 0 {
+		return ""
+	}
+
+	// Если достижение всего одно — отдаем без нумерации
+	if len(formatted) == 1 {
+		return formatted[0]
+	}
+
+	// Если несколько — нумеруем: "1. ... \n2. ..."
+	var sb strings.Builder
+	for i, item := range formatted {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("%d. %s", i+1, item))
+	}
+
+	return sb.String()
 }

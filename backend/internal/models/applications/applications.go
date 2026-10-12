@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	ApprovedStatus      = 2
-	RejectedStatus      = 3
-	ConsiderationStatus = 1
+	ApprovedStatus = 2
+	RejectedStatus = 3
+	InvitedStatus  = 1
 )
 
 type Application struct {
@@ -18,7 +18,7 @@ type Application struct {
 	SchoolID           uuid.UUID `gorm:"not null"`
 	EventID            uuid.UUID `gorm:"not null"`
 	ClassParticipation int       `gorm:"type:int"`
-	Status             int       `gorm:"default:1"` // 2 = одобрено, 3 = Отменено, 1 = не обработано
+	Status             int       `gorm:"default:1"` // 2 = одобрено, 3 = Отменено, 1 = приглашён
 	SubmittedAt        time.Time `gorm:"autoCreateTime"`
 	UpdatedAt          time.Time `gorm:"autoUpdateTime"`
 }

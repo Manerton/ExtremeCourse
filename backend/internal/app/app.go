@@ -11,6 +11,7 @@ import (
 	"main/internal/handlers/auth_handler"
 	"main/internal/handlers/district_handler"
 	"main/internal/handlers/event_handler"
+	"main/internal/handlers/file_handler"
 	"main/internal/handlers/link_handler"
 	"main/internal/handlers/participant_handler"
 	"main/internal/handlers/portfolio_handler"
@@ -32,6 +33,7 @@ import (
 	"main/internal/services/auth_service"
 	"main/internal/services/district_service"
 	"main/internal/services/event_service"
+	"main/internal/services/excel_service"
 	"main/internal/services/links_service"
 	"main/internal/services/participant_service"
 	"main/internal/services/portfolio_service"
@@ -111,6 +113,8 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	applicationService := application_service.NewApplicationService(log, gormORM, applicationRepository, participantRepository, schoolRepository, eventReposotory, portfolioRepository)
 	portfolioService := portfolio_service.New(log, gormORM, portfolioRepository, diskStore)
 
+	excelService := excel_service.NewExcelService(log)
+
 	// init handlers
 	userHandler := user_handler.New(userService)
 	authHandler := auth_handler.New(authService)
@@ -119,8 +123,9 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	districtHandler := district_handler.New(districtService)
 	linkHandler := link_handler.New(linkService)
 	eventHandler := event_handler.New(eventService)
-	applicationHandler := application_handler.NewApplicationHandler(applicationService, log)
+	applicationHandler := application_handler.NewApplicationHandler(applicationService, excelService, log)
 	portfolioHandler := portfolio_handler.New(portfolioService)
+	fileHandler := file_handler.NewFileHandler(diskStore)
 
 	// init router
 	router := chi.NewRouter()
@@ -142,6 +147,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		applicationHandler,
 		eventHandler,
 		portfolioHandler,
+		fileHandler,
 	)
 
 	// init server
@@ -163,7 +169,8 @@ func (a *App) initRoutes(router *chi.Mux,
 	linkHandler *link_handler.LinkHandler,
 	applicationHandler *application_handler.ApplicationHandler,
 	eventHandler *event_handler.EventHandler,
-	portfolioHandler *portfolio_handler.PortfolioHandler) {
+	portfolioHandler *portfolio_handler.PortfolioHandler,
+	fileHandler *file_handler.FileHandler) {
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
 
@@ -178,6 +185,8 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	// Сверено со Swagger: @Router /api/users/verify-code [post]
 	router.Post("/api/users/verify-code", authHandler.VerifyTrustCode)
+
+	router.Get("/api/files/download", fileHandler.DownloadFile)
 
 	// Сверено со Swagger: @Router /api/users/check-phone и check-email [post]
 	router.Post("/api/users/check-phone", authHandler.CheckPhone)
@@ -243,6 +252,8 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Get("/api/users/{userID}/applications", applicationHandler.GetApplicationsByUserID)
 		r.Post("/api/applications/{applicationID}/cancel", applicationHandler.CancelApplication)
 		r.Patch("/api/applications/update-status/{applicationID}", applicationHandler.SwitchApplicationStatus)
+
+		r.Get("/api/applications/export-excel", applicationHandler.ExportApplicationsToExcel)
 
 		r.Route("/api/applications/{application_id}/portfolio", func(r chi.Router) {
 			r.Post("/", portfolioHandler.CreatePortfolio)        // Multipart: file, description, achievements

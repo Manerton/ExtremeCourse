@@ -15,6 +15,57 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/applications/export-excel": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Выгрузка всех заявок (с фильтрацией по странице/лимиту при необходимости) в формате XLSX",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "applications"
+                ],
+                "summary": "Export applications to Excel",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Элементов на странице",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "applications.xlsx",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/applications/full-details": {
             "get": {
                 "security": [
@@ -904,6 +955,65 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/files/download": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Скачивает файл из файлового хранилища по переданному относительному или полному пути",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Скачивание файла",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"uploads/550e8400-e29b-41d4-a716-446655440000-diploma.pdf\"",
+                        "description": "Путь к файлу или имя файла",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Файл успешно получен",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Не указан путь к файлу",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Доступ запрещен (попытка Path Traversal)",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Файл не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
                             "$ref": "#/definitions/response.ApiResponse"
                         }
@@ -3499,7 +3609,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "2 = одобрено, 3 = Отменено, 1 = не обработано",
+                    "description": "2 = одобрено, 3 = Отменено, 1 = приглашён",
                     "type": "integer"
                 },
                 "submittedAt": {

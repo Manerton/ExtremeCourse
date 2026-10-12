@@ -32,6 +32,7 @@ func IsApiError(err error) (*ApiError, bool) {
 var (
 	ErrInternalError = &ApiError{Code: "INTERNAL_SERVER_ERROR", HttpCode: http.StatusInternalServerError, Message: "Something was wrong"}
 	ErrBadRequest    = &ApiError{Code: "BAD_REQUEST", HttpCode: http.StatusBadRequest, Message: "Invalid data"}
+	ErrAccessDenied  = &ApiError{Code: "ACCESS_DENIED", HttpCode: http.StatusMethodNotAllowed, Message: "Access denied"}
 )
 
 // Token errors
@@ -64,4 +65,9 @@ var (
 // School participant
 var (
 	ErrSchoolNotFound = &ApiError{Code: "SCHOOL_NOT_FOUND", HttpCode: http.StatusNotFound, Message: "school not found"}
+)
+
+// Files error
+var (
+	ErrFileNotFound = &ApiError{Code: "FILE_NOT_FOUND", HttpCode: http.StatusNotFound, Message: "file not found"}
 )

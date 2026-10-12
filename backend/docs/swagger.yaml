@@ -181,7 +181,7 @@ definitions:
       schoolID:
         type: string
       status:
-        description: 2 = одобрено, 3 = Отменено, 1 = не обработано
+        description: 2 = одобрено, 3 = Отменено, 1 = приглашён
         type: integer
       submittedAt:
         type: string
@@ -786,6 +786,39 @@ paths:
       summary: Review application (approve or reject)
       tags:
       - applications
+  /api/applications/export-excel:
+    get:
+      description: Выгрузка всех заявок (с фильтрацией по странице/лимиту при необходимости)
+        в формате XLSX
+      parameters:
+      - description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      - description: Элементов на странице
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: applications.xlsx
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Export applications to Excel
+      tags:
+      - applications
   /api/applications/full-details:
     get:
       description: Получение полного списка заявок с данными о пользователях, их школах
@@ -1041,6 +1074,45 @@ paths:
       summary: Update event status
       tags:
       - events
+  /api/files/download:
+    get:
+      description: Скачивает файл из файлового хранилища по переданному относительному
+        или полному пути
+      parameters:
+      - description: Путь к файлу или имя файла
+        example: '"uploads/550e8400-e29b-41d4-a716-446655440000-diploma.pdf"'
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Файл успешно получен
+          schema:
+            type: file
+        "400":
+          description: Не указан путь к файлу
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "403":
+          description: Доступ запрещен (попытка Path Traversal)
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "404":
+          description: Файл не найден
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Скачивание файла
+      tags:
+      - files
   /api/homeworks:
     get:
       description: Получение списка всех опубликованных и активных домашних работ
