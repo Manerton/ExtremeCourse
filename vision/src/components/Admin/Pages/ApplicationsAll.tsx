@@ -93,7 +93,12 @@ const formatDateTime = (dateStr?: string) => {
 };
 
 const isLocalhost = (url: string) => {
-    return url.includes("localhost") || url.includes("127.0.0.1");
+    return (
+        url.includes("localhost") ||
+        url.includes("127.0.0.1") ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+    );
 };
 
 const ApplicationsPage: React.FC = () => {
@@ -285,10 +290,28 @@ const ApplicationsPage: React.FC = () => {
         return `${previewFileUrl}${separator}inline=true`;
     }, [previewFileUrl]);
 
+    // Гарантированно возвращает абсолютный URL (например, https://shift.schooltech.ru/api/files/download?...)
+    const toAbsoluteUrl = (url: string): string => {
+        if (!url) return "";
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return url;
+        }
+        // Если путь относительный (/api/...), склеиваем с текущим доменом браузера
+        return `${window.location.origin}${url.startsWith("/") ? url : `/${url}`}`;
+    };
+
     // Ссылка на просмотрщик Microsoft для PPTX
     const officeViewerUrl = useMemo(() => {
-        if (!previewFileUrl || isLocalhost(previewFileUrl)) return "";
-        const cleanUrl = decodeURI(previewFileUrl);
+        if (!previewFileUrl) return "";
+
+        // 1. Получаем полный абсолютный URL
+        const fullAbsoluteUrl = toAbsoluteUrl(previewFileUrl);
+
+        // 2. Если это локальная разработка (localhost / 127.0.0.1) — viewer не сможет достучаться
+        if (isLocalhost(fullAbsoluteUrl)) return "";
+
+        // 3. Декодируем возможные двойные кодирования и кодируем чисто для параметра src
+        const cleanUrl = decodeURI(fullAbsoluteUrl);
         return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(cleanUrl)}`;
     }, [previewFileUrl]);
 
