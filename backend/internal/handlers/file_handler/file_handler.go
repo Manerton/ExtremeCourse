@@ -38,8 +38,10 @@ func (h *FileHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	newFilePath, err := url.PathUnescape(filePath)
+
 	// Открываем файл через хранилище
-	file, fileInfo, originalName, err := h.storage.GetFile(filePath)
+	file, fileInfo, originalName, err := h.storage.GetFile(newFilePath)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)
