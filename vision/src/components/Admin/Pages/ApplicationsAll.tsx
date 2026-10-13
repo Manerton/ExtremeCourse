@@ -493,7 +493,7 @@ const ApplicationsPage: React.FC = () => {
                                             <td className="text-center">
                                                 {hasPortfolio ? (
                                                     <div
-                                                        className="d-inline-block text-decoration-none"
+                                                        className="portfolio-clickable d-inline-block text-decoration-none"
                                                         onClick={() => setSelectedApp(app)}
                                                         role="button"
                                                         tabIndex={0}
