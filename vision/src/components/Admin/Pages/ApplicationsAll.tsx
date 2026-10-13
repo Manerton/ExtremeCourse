@@ -21,6 +21,7 @@ import {
     BsXCircle,
     BsEye,
     BsFileEarmarkPdf,
+    BsFileEarmarkPpt,
     BsPersonCircle,
     BsMortarboard,
     BsTrophy,
@@ -31,22 +32,38 @@ import {
     BsSortUp,
     BsArrowDownUp,
     BsFileEarmarkExcel,
+    BsDownload,
+    BsBoxArrowUpRight,
 } from "react-icons/bs";
 import { useAuth } from "../../Helpers/AuthContext";
 import { FullApplicationDetailsDTO } from "../../types/application";
-import { axiosGetFullApplications } from "../../../requests/ApplicationRequests";
+import {
+    axiosGetFullApplications,
+    axiosInviteApplication,
+    axiosRejectApplication
+} from "../../../requests/ApplicationRequests";
 import { parseAchievement, ParsedAchievement } from "../../../utils/achievementCatalog";
 import { axiosDownloadApplicationsExcel, buildFileDownloadUrl } from "../../../requests/FilesRequests";
 
-// Статусы заявок
+// Статусы заявок согласно обновленной кодировке
 const STATUS_META: Record<number, { text: string; bg: string }> = {
-    2: { text: "На рассмотрении", bg: "warning" },
     1: { text: "Одобрено", bg: "success" },
-    3: { text: "Отклонено", bg: "danger" },
+    2: { text: "На рассмотрении", bg: "warning" },
+    3: { text: "Отозвана", bg: "secondary" },
+    4: { text: "Отклонено", bg: "danger" },
 };
 
+// Получение чистого имени файла без %D0...
+const getFileNameFromPath = (path?: string): string => {
+    if (!path) return "";
+    const rawName = path.split("/").pop() || path;
+    try {
+        return decodeURIComponent(rawName);
+    } catch {
+        return rawName;
+    }
+};
 
-// Форматирование даты рождения (строго число, месяц, год)
 const formatBirthDate = (dateStr?: string) => {
     if (!dateStr) return "—";
     try {
@@ -60,7 +77,6 @@ const formatBirthDate = (dateStr?: string) => {
     }
 };
 
-// Форматирование даты и времени подачи заявки
 const formatDateTime = (dateStr?: string) => {
     if (!dateStr) return "—";
     try {
@@ -76,6 +92,10 @@ const formatDateTime = (dateStr?: string) => {
     }
 };
 
+const isLocalhost = (url: string) => {
+    return url.includes("localhost") || url.includes("127.0.0.1");
+};
+
 const ApplicationsPage: React.FC = () => {
     const { accessToken } = useAuth();
 
@@ -83,6 +103,7 @@ const ApplicationsPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [exporting, setExporting] = useState(false);
+    const [statusUpdating, setStatusUpdating] = useState(false);
 
     // Пагинация
     const [page, setPage] = useState(1);
@@ -99,6 +120,9 @@ const ApplicationsPage: React.FC = () => {
 
     // Модальное окно детального просмотра
     const [selectedApp, setSelectedApp] = useState<FullApplicationDetailsDTO | null>(null);
+
+    // Модальное окно предпросмотра файла презентации
+    const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
 
     const loadData = async (currentPage: number, currentLimit: number) => {
         if (!accessToken) return;
@@ -118,7 +142,6 @@ const ApplicationsPage: React.FC = () => {
         loadData(page, limit);
     }, [page, limit, accessToken]);
 
-    // Экспорт Excel
     const handleExportExcel = async () => {
         if (!accessToken) return;
         setExporting(true);
@@ -178,7 +201,6 @@ const ApplicationsPage: React.FC = () => {
             return matchesQuery && matchesStatus && matchesSubject;
         });
 
-        // Сортировка по баллам портфолио
         if (sortByScore) {
             const dir = sortByScore === "asc" ? 1 : -1;
             filtered.sort((a, b) => {
@@ -191,7 +213,6 @@ const ApplicationsPage: React.FC = () => {
         return filtered;
     }, [applications, searchQuery, statusFilter, subjectFilter, sortByScore]);
 
-    // Преобразуем коды выбранной заявки в структурированный список достижений
     const selectedParsedAchievements = useMemo<ParsedAchievement[]>(() => {
         if (!selectedApp?.portfolio?.code_achievement) return [];
         return selectedApp.portfolio.code_achievement.map(parseAchievement);
@@ -201,17 +222,75 @@ const ApplicationsPage: React.FC = () => {
         return selectedParsedAchievements.reduce((sum, item) => sum + item.score, 0);
     }, [selectedParsedAchievements]);
 
-    const handleStatusChange = (appId: string, newStatus: number, statusLabel: string) => {
-        alert(
-            `Действие: Перевод заявки [${appId.slice(0, 8)}] в статус "${statusLabel}".\n(Бэкенд-метод изменения статуса находится в разработке)`
-        );
-        setApplications((prev) =>
-            prev.map((item) => (item.id === appId ? { ...item, status: newStatus } : item))
-        );
-        if (selectedApp && selectedApp.id === appId) {
-            setSelectedApp((prev) => (prev ? { ...prev, status: newStatus } : null));
+    // Обработка одобрения заявки (статус 1)
+    const handleInvite = async (appId: string) => {
+        if (!accessToken) return;
+        setStatusUpdating(true);
+        try {
+            await axiosInviteApplication(accessToken, appId);
+            setApplications((prev) =>
+                prev.map((item) => (item.id === appId ? { ...item, status: 1 } : item))
+            );
+            if (selectedApp && selectedApp.id === appId) {
+                setSelectedApp((prev) => (prev ? { ...prev, status: 1 } : null));
+            }
+        } catch (err: any) {
+            alert(err.response?.data?.message || "Ошибка при одобрении заявки");
+        } finally {
+            setStatusUpdating(false);
         }
     };
+
+    // Обработка отклонения заявки (статус 4)
+    const handleReject = async (appId: string) => {
+        if (!accessToken) return;
+        setStatusUpdating(true);
+        try {
+            await axiosRejectApplication(accessToken, appId);
+            setApplications((prev) =>
+                prev.map((item) => (item.id === appId ? { ...item, status: 4 } : item))
+            );
+            if (selectedApp && selectedApp.id === appId) {
+                setSelectedApp((prev) => (prev ? { ...prev, status: 4 } : null));
+            }
+        } catch (err: any) {
+            alert(err.response?.data?.message || "Ошибка при отклонении заявки");
+        } finally {
+            setStatusUpdating(false);
+        }
+    };
+
+    // Проверяем расширение по имени файла или пути, игнорируя query-параметры
+    const checkIsPptx = (urlOrPath?: string | null): boolean => {
+        if (!urlOrPath) return false;
+        try {
+            // Декодируем и берем путь (отсекая query-хвост если это не параметр ?path=)
+            const decoded = decodeURIComponent(urlOrPath).toLowerCase();
+            // Проверяем, есть ли расширение .pptx или .ppt перед концом строки или перед амперсандом &
+            return /\.pptx?($|[?&#])/i.test(decoded);
+        } catch {
+            return false;
+        }
+    };
+
+    // Определение формата файла
+    const isPptx = useMemo(() => {
+        return checkIsPptx(previewFileUrl);
+    }, [previewFileUrl]);
+
+    // URL с параметром inline=true для отображения PDF в браузере
+    const inlineFileUrl = useMemo(() => {
+        if (!previewFileUrl) return "";
+        const separator = previewFileUrl.includes("?") ? "&" : "?";
+        return `${previewFileUrl}${separator}inline=true`;
+    }, [previewFileUrl]);
+
+    // Ссылка на просмотрщик Microsoft для PPTX
+    const officeViewerUrl = useMemo(() => {
+        if (!previewFileUrl || isLocalhost(previewFileUrl)) return "";
+        const cleanUrl = decodeURI(previewFileUrl);
+        return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(cleanUrl)}`;
+    }, [previewFileUrl]);
 
     return (
         <Container fluid className="px-4 py-4">
@@ -281,7 +360,8 @@ const ApplicationsPage: React.FC = () => {
                                 <option value="ALL">Все статусы</option>
                                 <option value="2">На рассмотрении</option>
                                 <option value="1">Одобрено</option>
-                                <option value="3">Отклонено</option>
+                                <option value="4">Отклонено</option>
+                                <option value="3">Отозвана</option>
                             </Form.Select>
                         </Col>
                         <Col sm={6} md={3} lg={2}>
@@ -464,14 +544,16 @@ const ApplicationsPage: React.FC = () => {
                                                     <Button
                                                         variant="outline-success"
                                                         title="Одобрить заявку"
-                                                        onClick={() => handleStatusChange(app.id, 1, "Одобрено")}
+                                                        disabled={app.status === 1 || statusUpdating}
+                                                        onClick={() => handleInvite(app.id)}
                                                     >
                                                         <BsCheckCircle />
                                                     </Button>
                                                     <Button
                                                         variant="outline-danger"
                                                         title="Отклонить заявку"
-                                                        onClick={() => handleStatusChange(app.id, 3, "Отклонено")}
+                                                        disabled={app.status === 4 || statusUpdating}
+                                                        onClick={() => handleReject(app.id)}
                                                     >
                                                         <BsXCircle />
                                                     </Button>
@@ -486,7 +568,6 @@ const ApplicationsPage: React.FC = () => {
                     </div>
                 </Card.Body>
 
-                {/* Пагинация */}
                 <Card.Footer className="bg-white border-top py-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
                     <div className="d-flex align-items-center gap-2">
                         <span className="small text-muted">Записей на страницу:</span>
@@ -553,7 +634,6 @@ const ApplicationsPage: React.FC = () => {
                             {/* Левая колонка: Профиль кандидата и учреждение */}
                             <Col lg={4}>
                                 <div className="d-flex flex-column gap-3">
-                                    {/* Карточка участника */}
                                     <Card className="border-0 shadow-sm rounded-3">
                                         <Card.Body className="p-3">
                                             <div className="d-flex align-items-center gap-2 mb-3 text-primary">
@@ -587,7 +667,6 @@ const ApplicationsPage: React.FC = () => {
                                         </Card.Body>
                                     </Card>
 
-                                    {/* Карточка школы и программы */}
                                     <Card className="border-0 shadow-sm rounded-3">
                                         <Card.Body className="p-3">
                                             <div className="d-flex align-items-center gap-2 mb-3 text-primary">
@@ -641,21 +720,20 @@ const ApplicationsPage: React.FC = () => {
                                         </div>
 
                                         {selectedApp.portfolio?.file_path && (() => {
-                                            const downloadUrl = buildFileDownloadUrl(selectedApp.portfolio.file_path);
-                                            if (!downloadUrl) return null;
+                                            const fullUrl = buildFileDownloadUrl(selectedApp.portfolio.file_path);
+                                            if (!fullUrl) return null;
+
+                                            const fileIsPpt = checkIsPptx(selectedApp.portfolio.file_path);
 
                                             return (
                                                 <Button
-                                                    as="a"
-                                                    href={downloadUrl}
-                                                    target="_blank"
-                                                    rel="noreferrer noopener"
                                                     variant="primary"
                                                     size="sm"
                                                     className="d-inline-flex align-items-center gap-2 shadow-sm"
+                                                    onClick={() => setPreviewFileUrl(fullUrl)}
                                                 >
-                                                    <BsFileEarmarkPdf size={16} />
-                                                    <span>Скачать презентацию</span>
+                                                    {fileIsPpt ? <BsFileEarmarkPpt size={16} /> : <BsFileEarmarkPdf size={16} />}
+                                                    <span>Просмотреть презентацию</span>
                                                 </Button>
                                             );
                                         })()}
@@ -749,25 +827,144 @@ const ApplicationsPage: React.FC = () => {
                         </Row>
                     </Modal.Body>
 
-                    <Modal.Footer className="bg-light d-flex justify-content-between">
+                    <Modal.Footer className="bg-light d-flex justify-content-between align-items-center">
                         <Button variant="secondary" onClick={() => setSelectedApp(null)}>
                             Закрыть
                         </Button>
-                        <div className="d-flex gap-2">
+
+                        <div className="d-flex align-items-center gap-2">
+                            {selectedApp.status === 1 && (
+                                <span className="text-success small fw-semibold me-2 d-inline-flex align-items-center gap-1">
+                                    <BsCheckCircle /> Заявка одобрена
+                                </span>
+                            )}
+                            {selectedApp.status === 4 && (
+                                <span className="text-danger small fw-semibold me-2 d-inline-flex align-items-center gap-1">
+                                    <BsXCircle /> Заявка отклонена
+                                </span>
+                            )}
+                            {selectedApp.status === 3 && (
+                                <span className="text-muted small me-2">Заявка отозвана участником</span>
+                            )}
+
                             <Button
                                 variant="outline-danger"
-                                onClick={() => handleStatusChange(selectedApp.id, 3, "Отклонено")}
+                                disabled={selectedApp.status === 4 || statusUpdating}
+                                onClick={() => handleReject(selectedApp.id)}
                             >
-                                Отклонить
+                                {statusUpdating ? <Spinner size="sm" animation="border" /> : "Отклонить"}
                             </Button>
                             <Button
                                 variant="success"
-                                onClick={() => handleStatusChange(selectedApp.id, 1, "Одобрено")}
+                                disabled={selectedApp.status === 1 || statusUpdating}
+                                onClick={() => handleInvite(selectedApp.id)}
                             >
-                                Одобрить заявку
+                                {statusUpdating ? <Spinner size="sm" animation="border" /> : "Одобрить заявку"}
                             </Button>
                         </div>
                     </Modal.Footer>
+                </Modal>
+            )}
+
+            {/* Всплывающее окно браузерного предпросмотра файлов (PDF / PPTX) */}
+            {previewFileUrl && (
+                <Modal
+                    show={Boolean(previewFileUrl)}
+                    onHide={() => setPreviewFileUrl(null)}
+                    size="xl"
+                    centered
+                    dialogClassName="modal-90w"
+                >
+                    <Modal.Header closeButton className="bg-light py-2">
+                        <div className="d-flex align-items-center justify-content-between w-100 pe-3">
+                            <div className="d-flex align-items-center gap-2 text-truncate me-2">
+                                {isPptx ? (
+                                    <BsFileEarmarkPpt className="text-warning fs-5 flex-shrink-0" />
+                                ) : (
+                                    <BsFileEarmarkPdf className="text-danger fs-5 flex-shrink-0" />
+                                )}
+                                <span className="fw-bold text-dark text-truncate" title={getFileNameFromPath(previewFileUrl)}>
+                                    {getFileNameFromPath(previewFileUrl)}
+                                </span>
+                                <Badge bg={isPptx ? "warning" : "danger"} text={isPptx ? "dark" : "light"} className="fw-normal">
+                                    {isPptx ? "PowerPoint" : "PDF"}
+                                </Badge>
+                            </div>
+                            <div className="d-flex gap-2 flex-shrink-0">
+                                <Button
+                                    as="a"
+                                    href={previewFileUrl}
+                                    download={getFileNameFromPath(previewFileUrl)}
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    className="d-inline-flex align-items-center gap-1"
+                                >
+                                    <BsDownload />
+                                    <span>Скачать</span>
+                                </Button>
+                                {!isPptx && (
+                                    <Button
+                                        as="a"
+                                        href={inlineFileUrl}
+                                        target="_blank"
+                                        rel="noreferrer noopener"
+                                        variant="outline-primary"
+                                        size="sm"
+                                        className="d-inline-flex align-items-center gap-1"
+                                        title="Открыть в новой вкладке"
+                                    >
+                                        <BsBoxArrowUpRight />
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </Modal.Header>
+
+                    <Modal.Body className="p-0 bg-dark position-relative" style={{ height: "82vh" }}>
+                        {isPptx ? (
+                            isLocalhost(previewFileUrl) ? (
+                                <div className="text-white text-center p-5 d-flex flex-column align-items-center justify-content-center h-100">
+                                    <BsFileEarmarkPpt size={48} className="text-warning mb-3" />
+                                    <h5 className="mb-2">Файл презентации PowerPoint (.pptx)</h5>
+                                    <p className="text mb-4 small" style={{ maxWidth: "520px" }}>
+                                        Онлайн-просмотрщик презентаций Microsoft требует публичного доступа к файлу.
+                                        В локальной среде (localhost) просмотр выполняется через скачивание файла.
+                                    </p>
+                                    <Button as="a" href={previewFileUrl} download={getFileNameFromPath(previewFileUrl)} variant="primary" size="md">
+                                        <BsDownload className="me-2" /> Скачать презентацию
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="w-100 h-100 position-relative">
+                                    <iframe
+                                        src={officeViewerUrl}
+                                        title="Презентация PPTX"
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: "none" }}
+                                    />
+                                    <div
+                                        className="position-absolute bottom-0 start-50 translate-middle-x mb-3 p-2 px-3 bg-dark bg-opacity-75 rounded text-white small text-center"
+                                        style={{ pointerEvents: "auto", backdropFilter: "blur(4px)" }}
+                                    >
+                                        Не отображается?{" "}
+                                        <a href={previewFileUrl} download={getFileNameFromPath(previewFileUrl)} className="text-warning fw-semibold text-decoration-underline ms-1">
+                                            Скачать файл напрямую
+                                        </a>
+                                    </div>
+                                </div>
+                            )
+                        ) : (
+                            /* Рендеринг PDF с параметром inline=true в iframe */
+                            <iframe
+                                src={`${inlineFileUrl}#toolbar=1`}
+                                title="Просмотр PDF"
+                                width="100%"
+                                height="100%"
+                                style={{ border: "none" }}
+                            />
+                        )}
+                    </Modal.Body>
                 </Modal>
             )}
         </Container>

@@ -5,8 +5,11 @@ import (
 	"main/internal/lib/errs"
 	"main/internal/lib/response"
 	"main/internal/storage/filestore"
+	"mime"
 	"net/http"
 	"net/url"
+	"path/filepath"
+	"strings"
 
 	"github.com/go-chi/render"
 )
@@ -39,6 +42,9 @@ func (h *FileHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newFilePath, err := url.PathUnescape(filePath)
+	if err != nil {
+		newFilePath = filePath
+	}
 
 	// Открываем файл через хранилище
 	file, fileInfo, originalName, err := h.storage.GetFile(newFilePath)
@@ -54,11 +60,33 @@ func (h *FileHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Заголовок для принудительного скачивания с сохранением исходного имени файла
-	// url.PathEscape нужен для корректной поддержки кириллицы в именах файлов
-	encodedName := url.PathEscape(originalName)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename*=UTF-8''%s", encodedName))
+	// 1. Определяем Content-Type по расширению
+	ext := strings.ToLower(filepath.Ext(originalName))
+	contentType := mime.TypeByExtension(ext)
+	if contentType == "" {
+		switch ext {
+		case ".pdf":
+			contentType = "application/pdf"
+		case ".pptx":
+			contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+		case ".ppt":
+			contentType = "application/vnd.ms-powerpoint"
+		default:
+			contentType = "application/octet-stream"
+		}
+	}
+	w.Header().Set("Content-Type", contentType)
 
-	// Отдаем файл с поддержкой Range-запросов и стриминга
+	// 2. Выбираем режим: inline (для предпросмотра) или attachment (для принудительного скачивания)
+	dispositionType := "attachment"
+	if r.URL.Query().Get("inline") == "true" || r.URL.Query().Get("view") == "true" {
+		dispositionType = "inline"
+	}
+
+	// 3. Формируем корректный заголовок с поддержкой UTF-8
+	encodedName := url.PathEscape(originalName)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename*=UTF-8''%s", dispositionType, encodedName))
+
+	// 4. Отдаем файл клиенту
 	http.ServeContent(w, r, originalName, fileInfo.ModTime(), file)
 }

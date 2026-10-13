@@ -175,3 +175,26 @@ export async function axiosGetFullApplications(
     const rawData = res.data?.data ?? res.data;
     return Array.isArray(rawData) ? rawData : [];
 }
+
+// Запросы изменения статуса организатором
+export async function axiosInviteApplication(token: string, applicationId: string) {
+    return axios.patch(
+        API_CONFIG.INVITEAPPLICATION + `${applicationId}`,
+        {},
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+        }
+    );
+}
+
+export async function axiosRejectApplication(token: string, applicationId: string) {
+    return axios.patch(
+        API_CONFIG.REJECTAPPLICATION + `${applicationId}`,
+        {},
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+        }
+    );
+}
