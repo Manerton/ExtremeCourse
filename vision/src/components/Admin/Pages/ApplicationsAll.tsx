@@ -967,8 +967,8 @@ const ApplicationsPage: React.FC = () => {
                                         style={{ border: "none" }}
                                     />
                                     <div
-                                        className="position-absolute bottom-0 start-50 translate-middle-x mb-3 p-2 px-3 bg-dark bg-opacity-75 rounded text-white small text-center"
-                                        style={{ pointerEvents: "auto", backdropFilter: "blur(4px)" }}
+                                        className="position-absolute top-0 start-50 translate-middle-x mt-3 p-2 px-3 bg-dark bg-opacity-75 rounded text-white small text-center"
+                                        style={{ pointerEvents: "auto", backdropFilter: "blur(4px)", zIndex: 10 }}
                                     >
                                         Не отображается?{" "}
                                         <a href={previewFileUrl} download={getFileNameFromPath(previewFileUrl)} className="text-warning fw-semibold text-decoration-underline ms-1">
