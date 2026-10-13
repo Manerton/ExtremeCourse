@@ -1,6 +1,7 @@
 package base_access
 
 import (
+	"context"
 	"log"
 	"main/internal/lib/jwttoken"
 	"net/http"
@@ -34,14 +35,6 @@ func BaseAccess(jwtManager *jwttoken.JWTManager) func(next http.Handler) http.Ha
 
 			tokenString := parts[1]
 
-			// cookie, err := r.Cookie("token")
-			// if err != nil {
-			// 	log.Println("token missing in cookie")
-			// 	render.Status(r, http.StatusUnauthorized)
-			// 	render.JSON(w, r, response.ErrorResponse("missing token in cookie"))
-			// 	return
-			// }
-
 			_, err := jwtManager.VerifyToken(tokenString)
 			if err != nil {
 				log.Printf("token verification failed: %v\n", err)
@@ -49,7 +42,21 @@ func BaseAccess(jwtManager *jwttoken.JWTManager) func(next http.Handler) http.Ha
 				return
 			}
 
-			next.ServeHTTP(w, r)
+			claims, err := jwtManager.ParseAccessTokenWithClaims(tokenString)
+			if err != nil {
+				log.Printf("token parsed failed: %v\n", err)
+				http.Error(w, "token parsed failed", http.StatusUnauthorized)
+				return
+			}
+			id, err := uuid.Parse(claims.Subject)
+			if err != nil {
+				log.Printf("token error: %v", err)
+				http.Error(w, "Invalid claims", http.StatusUnauthorized)
+				return
+			}
+			role := claims.Role
+			ctx := context.WithValue(r.Context(), UserInfoKey{}, UserInfo{id: id, role: role})
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
