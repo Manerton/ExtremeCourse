@@ -128,7 +128,7 @@ func (s *EventService) ApplyToEvent(ctx context.Context, eventIDStr, userIDStr s
 
 	// 1. Проверка срока подачи заявок (до 12.10.2026)
 	if time.Now().UTC().After(verification.RegistrationDeadline) {
-		return uuid.Nil, errs.ErrBadRequest.Wrap("registration period has ended (deadline: 12.10.2026)")
+		return uuid.Nil, errs.ErrBadRequest.Wrap("registration period has ended (deadline: 25.10.2026)")
 	}
 
 	evID, err := uuid.Parse(eventIDStr)

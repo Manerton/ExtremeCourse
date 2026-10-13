@@ -21,6 +21,7 @@ import (
 	"main/internal/lib/liblogger"
 	"main/internal/middleware/base_access"
 	"main/internal/middleware/midlogger"
+	"main/internal/models/user"
 	"main/internal/repositories/application_repository"
 	"main/internal/repositories/district_repository"
 	"main/internal/repositories/event_repository"
@@ -247,13 +248,17 @@ func (a *App) initRoutes(router *chi.Mux,
 
 	router.With(base_access.BaseAccess(jwtManager)).Group(func(r chi.Router) {
 		// Получение полной таблицы заявок и модерация
-		r.Get("/api/applications/full-details", applicationHandler.GetAllFullApplications)
 		r.Patch("/api/applications/{id}/review", applicationHandler.ReviewApplication)
 		r.Get("/api/users/{userID}/applications", applicationHandler.GetApplicationsByUserID)
 		r.Post("/api/applications/{applicationID}/cancel", applicationHandler.CancelApplication)
 		r.Patch("/api/applications/update-status/{applicationID}", applicationHandler.SwitchApplicationStatus)
 
-		r.Get("/api/applications/export-excel", applicationHandler.ExportApplicationsToExcel)
+		r.With(base_access.RoleBasedAccess([]int{user.ADMIN, user.ORGANIZER})).Group(func(r chi.Router) {
+			r.Get("/api/applications/full-details", applicationHandler.GetAllFullApplications)
+			r.Patch("/api/applications/invite/{applicationID}", applicationHandler.OrganizationInvite)
+			r.Patch("/api/applications/reject/{applicationID}", applicationHandler.OrganizationReject)
+			r.Get("/api/applications/export-excel", applicationHandler.ExportApplicationsToExcel)
+		})
 
 		r.Route("/api/applications/{application_id}/portfolio", func(r chi.Router) {
 			r.Post("/", portfolioHandler.CreatePortfolio)        // Multipart: file, description, achievements

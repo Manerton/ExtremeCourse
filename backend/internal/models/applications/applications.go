@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	ApprovedStatus = 2
-	RejectedStatus = 3
-	InvitedStatus  = 1
+	ApprovedStatus             = 2
+	RejectedStatus             = 3
+	InvitedStatus              = 1
+	RejectedOrganizationStatus = 4
 )
 
 type Application struct {

@@ -7,6 +7,7 @@ import (
 	"main/internal/lib/errs"
 	"main/internal/lib/parser"
 	"main/internal/lib/response"
+	models "main/internal/models/applications"
 	"main/internal/services/application_service"
 	"main/internal/services/excel_service"
 	"net/http"
@@ -373,6 +374,44 @@ func (h *ApplicationHandler) SwitchApplicationStatus(w http.ResponseWriter, r *h
 		Status:     response.SUCCESS,
 		StatusCode: http.StatusOK,
 		Data:       "application switch successfully",
+	})
+}
+
+func (h *ApplicationHandler) OrganizationInvite(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	idStr := chi.URLParam(r, "applicationID")
+
+	if err := h.service.SetStatus(ctx, idStr, models.InvitedStatus); err != nil {
+		h.logger.Error("Ошибка обновления статуса заявок", slog.Any("error", err))
+		http.Error(w, "Не удалось обновить заявку", http.StatusInternalServerError)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       "application invited successfully",
+	})
+}
+
+func (h *ApplicationHandler) OrganizationReject(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	idStr := chi.URLParam(r, "applicationID")
+
+	if err := h.service.SetStatus(ctx, idStr, models.RejectedOrganizationStatus); err != nil {
+		h.logger.Error("Ошибка обновления статуса заявок", slog.Any("error", err))
+		http.Error(w, "Не удалось обновить заявку", http.StatusInternalServerError)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       "application invited successfully",
 	})
 }
 

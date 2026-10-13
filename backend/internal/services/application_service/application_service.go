@@ -199,7 +199,7 @@ func (s *ApplicationService) SwitchApplicationStatus(ctx context.Context, idStr 
 
 	// Проверка дедлайна на изменение
 	if time.Now().UTC().After(verification.RegistrationDeadline) {
-		return errs.ErrBadRequest.Wrap("cancellation period has ended (deadline: 12.10.2026)")
+		return errs.ErrBadRequest.Wrap("cancellation period has ended (deadline: 25.10.2026)")
 	}
 
 	uid, err := uuid.Parse(idStr)
@@ -235,6 +235,27 @@ func (s *ApplicationService) SwitchApplicationStatus(ctx context.Context, idStr 
 	if err != nil {
 		log.Error("failed to cancel application", liblogger.Err(err))
 		return errs.ErrInternalError.Wrap("failed to cancel application")
+	}
+
+	return nil
+}
+
+func (s *ApplicationService) SetStatus(ctx context.Context, appId string, status int) error {
+	const op = "services.application_service.SetStatus"
+
+	uid, err := uuid.Parse(appId)
+	if err != nil {
+		return fmt.Errorf("%s: failed parse id to uuid: %w", op, err)
+	}
+
+	applicationNow, err := s.repository.GetByID(ctx, s.db, uid)
+	if err != nil {
+		return fmt.Errorf("%s: failed get by id: %w", op, err)
+	}
+
+	applicationNow.Status = status
+	if err := s.repository.UpdateApplication(ctx, s.db, applicationNow); err != nil {
+		return fmt.Errorf("%s: failed update application: %w", op, err)
 	}
 
 	return nil
@@ -585,7 +606,7 @@ func (s *ApplicationService) CancelApplication(ctx context.Context, appIDStr str
 
 	// Проверка дедлайна на отзыв
 	if time.Now().UTC().After(verification.RegistrationDeadline) {
-		return errs.ErrBadRequest.Wrap("cancellation period has ended (deadline: 12.10.2026)")
+		return errs.ErrBadRequest.Wrap("cancellation period has ended (deadline: 25.10.2026)")
 	}
 
 	appID, err := uuid.Parse(appIDStr)
