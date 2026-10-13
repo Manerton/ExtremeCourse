@@ -220,7 +220,7 @@ func (s *ApplicationService) SwitchApplicationStatus(ctx context.Context, idStr 
 		application.Status = models.ApprovedStatus
 	}
 
-	applications, err := s.repository.GetAllByFilter(ctx, s.db, models.Application{Status: models.ApprovedStatus}, nil, nil, nil)
+	applications, err := s.repository.GetAllByFilter(ctx, s.db, models.Application{UserID: application.UserID, Status: models.ApprovedStatus}, nil, nil, nil)
 	if err != nil {
 		log.Error("failed get by status", liblogger.Err(err))
 		return fmt.Errorf("failed get by status: %w", err)
@@ -228,7 +228,7 @@ func (s *ApplicationService) SwitchApplicationStatus(ctx context.Context, idStr 
 
 	if len(applications) != 0 {
 		log.Error("cannot approve more than one application")
-		return fmt.Errorf("cannot approve more than one application: %d", err)
+		return fmt.Errorf("cannot approve more than one application: %d", len(applications))
 	}
 
 	err = s.repository.UpdateApplication(ctx, s.db, application)
