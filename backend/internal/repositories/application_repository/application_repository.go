@@ -65,6 +65,8 @@ func (r *ApplicationRepository) GetByID(ctx context.Context, orm orm.ORM, id uui
 func (r *ApplicationRepository) GetAllApplications(ctx context.Context, orm orm.ORM, offset *int, limit *int) ([]models.Application, error) {
 	const op = "repositories.application_repository.GetAllApplications"
 
+	order := "submitted_at DESC"
+
 	applications := []models.Application{}
 	err := orm.Find(
 		ctx,
@@ -73,7 +75,7 @@ func (r *ApplicationRepository) GetAllApplications(ctx context.Context, orm orm.
 		nil,           // Поля (nil - выбираем все)
 		offset,        // Offset (nil - без offset)
 		limit,         // Limit (nil - без лимита)
-		nil,           // Order (nil - без сортировки)
+		&order,        // Order (nil - без сортировки)
 		&applications, // Куда записать результат
 	)
 	if err != nil {
