@@ -34,6 +34,7 @@ import {
     BsFileEarmarkExcel,
     BsDownload,
     BsBoxArrowUpRight,
+    BsInfoCircle,
 } from "react-icons/bs";
 import { useAuth } from "../../Helpers/AuthContext";
 import { FullApplicationDetailsDTO } from "../../types/application";
@@ -43,6 +44,7 @@ import {
     axiosInviteApplication,
     axiosRejectApplication
 } from "../../../requests/ApplicationRequests";
+import { Achievement } from "../../../requests/PortfolioRequests";
 import { parseAchievement, ParsedAchievement } from "../../../utils/achievementCatalog";
 import { axiosDownloadApplicationsExcel, buildFileDownloadUrl } from "../../../requests/FilesRequests";
 
@@ -52,6 +54,12 @@ const STATUS_META: Record<number, { text: string; bg: string }> = {
     2: { text: "На рассмотрении", bg: "warning" },
     3: { text: "Отозвана", bg: "secondary" },
     4: { text: "Отклонено", bg: "danger" },
+};
+
+// Проверка, указал ли участник "Нет достижений"
+const checkHasNoAchievementsCode = (codes?: string[]): boolean => {
+    if (!codes || codes.length === 0) return false;
+    return codes.includes(Achievement.NoAchievements) || codes.includes("NO_ACHIEVEMENTS");
 };
 
 // Получение чистого имени файла без %D0...
@@ -119,6 +127,7 @@ const ApplicationsPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
+    const [portfolioFilter, setPortfolioFilter] = useState<string>("ALL");
 
     // Сортировка по баллам
     type SortDir = "asc" | "desc" | null;
@@ -204,7 +213,19 @@ const ApplicationsPage: React.FC = () => {
             const matchesSubject =
                 subjectFilter === "ALL" || app.event?.subject === subjectFilter;
 
-            return matchesQuery && matchesStatus && matchesSubject;
+            const hasPortfolio = Boolean(app.portfolio && app.portfolio.id);
+            const isNoAchievements = checkHasNoAchievementsCode(app.portfolio?.code_achievement);
+
+            let matchesPortfolio = true;
+            if (portfolioFilter === "WITH_ACHIEVEMENTS") {
+                matchesPortfolio = hasPortfolio && !isNoAchievements;
+            } else if (portfolioFilter === "NO_ACHIEVEMENTS") {
+                matchesPortfolio = hasPortfolio && isNoAchievements;
+            } else if (portfolioFilter === "NOT_ATTACHED") {
+                matchesPortfolio = !hasPortfolio;
+            }
+
+            return matchesQuery && matchesStatus && matchesSubject && matchesPortfolio;
         });
 
         if (sortByScore) {
@@ -217,11 +238,19 @@ const ApplicationsPage: React.FC = () => {
         }
 
         return filtered;
-    }, [applications, searchQuery, statusFilter, subjectFilter, sortByScore]);
+    }, [applications, searchQuery, statusFilter, subjectFilter, portfolioFilter, sortByScore]);
 
+    // Проверяем, выбрал ли выбранный участник пункт "У меня нет достижений"
+    const selectedAppHasNoAchievements = useMemo(() => {
+        return checkHasNoAchievementsCode(selectedApp?.portfolio?.code_achievement);
+    }, [selectedApp]);
+
+    // Парсим только реальные достижения (исключая технический код NO_ACHIEVEMENTS)
     const selectedParsedAchievements = useMemo<ParsedAchievement[]>(() => {
         if (!selectedApp?.portfolio?.code_achievement) return [];
-        return selectedApp.portfolio.code_achievement.map(parseAchievement);
+        return selectedApp.portfolio.code_achievement
+            .filter((code) => code !== Achievement.NoAchievements && code !== "NO_ACHIEVEMENTS")
+            .map(parseAchievement);
     }, [selectedApp]);
 
     const calculatedTotalScore = useMemo(() => {
@@ -288,48 +317,35 @@ const ApplicationsPage: React.FC = () => {
     const checkIsPptx = (urlOrPath?: string | null): boolean => {
         if (!urlOrPath) return false;
         try {
-            // Декодируем и берем путь (отсекая query-хвост если это не параметр ?path=)
             const decoded = decodeURIComponent(urlOrPath).toLowerCase();
-            // Проверяем, есть ли расширение .pptx или .ppt перед концом строки или перед амперсандом &
             return /\.pptx?($|[?&#])/i.test(decoded);
         } catch {
             return false;
         }
     };
 
-    // Определение формата файла
     const isPptx = useMemo(() => {
         return checkIsPptx(previewFileUrl);
     }, [previewFileUrl]);
 
-    // URL с параметром inline=true для отображения PDF в браузере
     const inlineFileUrl = useMemo(() => {
         if (!previewFileUrl) return "";
         const separator = previewFileUrl.includes("?") ? "&" : "?";
         return `${previewFileUrl}${separator}inline=true`;
     }, [previewFileUrl]);
 
-    // Гарантированно возвращает абсолютный URL (например, https://shift.schooltech.ru/api/files/download?...)
     const toAbsoluteUrl = (url: string): string => {
         if (!url) return "";
         if (url.startsWith("http://") || url.startsWith("https://")) {
             return url;
         }
-        // Если путь относительный (/api/...), склеиваем с текущим доменом браузера
         return `${window.location.origin}${url.startsWith("/") ? url : `/${url}`}`;
     };
 
-    // Ссылка на просмотрщик Microsoft для PPTX
     const officeViewerUrl = useMemo(() => {
         if (!previewFileUrl) return "";
-
-        // 1. Получаем полный абсолютный URL
         const fullAbsoluteUrl = toAbsoluteUrl(previewFileUrl);
-
-        // 2. Если это локальная разработка (localhost / 127.0.0.1) — viewer не сможет достучаться
         if (isLocalhost(fullAbsoluteUrl)) return "";
-
-        // 3. Декодируем возможные двойные кодирования и кодируем чисто для параметра src
         const cleanUrl = decodeURI(fullAbsoluteUrl);
         return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(cleanUrl)}`;
     }, [previewFileUrl]);
@@ -379,8 +395,8 @@ const ApplicationsPage: React.FC = () => {
             {/* Фильтры */}
             <Card className="shadow-sm border-0 mb-4">
                 <Card.Body className="p-3">
-                    <Row className="g-3">
-                        <Col md={6} lg={5}>
+                    <Row className="g-3 align-items-center">
+                        <Col md={12} lg={4}>
                             <InputGroup size="sm">
                                 <InputGroup.Text className="bg-white">
                                     <BsSearch className="text-muted" />
@@ -393,7 +409,7 @@ const ApplicationsPage: React.FC = () => {
                                 />
                             </InputGroup>
                         </Col>
-                        <Col sm={6} md={3} lg={3}>
+                        <Col sm={4} md={4} lg={2}>
                             <Form.Select
                                 size="sm"
                                 value={statusFilter}
@@ -406,7 +422,7 @@ const ApplicationsPage: React.FC = () => {
                                 <option value="3">Отозвана</option>
                             </Form.Select>
                         </Col>
-                        <Col sm={6} md={3} lg={2}>
+                        <Col sm={4} md={4} lg={2}>
                             <Form.Select
                                 size="sm"
                                 value={subjectFilter}
@@ -416,6 +432,18 @@ const ApplicationsPage: React.FC = () => {
                                 {uniqueSubjects.map((sub) => (
                                     <option key={sub} value={sub}>{sub}</option>
                                 ))}
+                            </Form.Select>
+                        </Col>
+                        <Col sm={4} md={4} lg={2}>
+                            <Form.Select
+                                size="sm"
+                                value={portfolioFilter}
+                                onChange={(e) => setPortfolioFilter(e.target.value)}
+                            >
+                                <option value="ALL">Все портфолио</option>
+                                <option value="WITH_ACHIEVEMENTS">С достижениями</option>
+                                <option value="NO_ACHIEVEMENTS">Без достижений</option>
+                                <option value="NOT_ATTACHED">Не прикреплено</option>
                             </Form.Select>
                         </Col>
                         <Col sm={12} md={12} lg={2} className="text-lg-end">
@@ -486,7 +514,11 @@ const ApplicationsPage: React.FC = () => {
                                 filteredApps.map((app) => {
                                     const statusMeta = STATUS_META[app.status] || { text: "Неизвестно", bg: "secondary" };
                                     const hasPortfolio = Boolean(app.portfolio && app.portfolio.id);
-                                    const achievementsCount = app.portfolio?.code_achievement?.length || 0;
+                                    const isNoAchievements = checkHasNoAchievementsCode(app.portfolio?.code_achievement);
+                                    const realAchievementsCount =
+                                        app.portfolio?.code_achievement?.filter(
+                                            (c) => c !== Achievement.NoAchievements && c !== "NO_ACHIEVEMENTS"
+                                        ).length || 0;
 
                                     const studentClass = app.user?.class;
                                     const participationClass = app.class_participation || app.event?.class;
@@ -508,7 +540,7 @@ const ApplicationsPage: React.FC = () => {
                                                 </Badge>
                                             </td>
 
-                                            {/* Портфолио: кликабельная карточка */}
+                                            {/* Портфолио: кликабельная карточка с отдельным видом для "Без достижений" */}
                                             <td className="text-center">
                                                 {hasPortfolio ? (
                                                     <div
@@ -522,20 +554,44 @@ const ApplicationsPage: React.FC = () => {
                                                                 setSelectedApp(app);
                                                             }
                                                         }}
-                                                        title="Нажмите, чтобы просмотреть ведомость достижений"
+                                                        title={
+                                                            isNoAchievements
+                                                                ? "Участник указал отсутствие достижений. Нажмите для просмотра заявки"
+                                                                : "Нажмите, чтобы просмотреть ведомость достижений"
+                                                        }
                                                     >
-                                                        <Badge
-                                                            bg="success-subtle"
-                                                            className="text-success border border-success-subtle px-2 py-1 fs-6"
-                                                        >
-                                                            {app.portfolio?.score || 0} б.
-                                                        </Badge>
-                                                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                                            {achievementsCount} достижений
-                                                        </div>
-                                                        <div className="small text-primary mt-1">
-                                                            <BsEye size={11} /> Открыть
-                                                        </div>
+                                                        {isNoAchievements ? (
+                                                            <>
+                                                                <Badge
+                                                                    bg="light"
+                                                                    text="dark"
+                                                                    className="border border-secondary-subtle px-2 py-1"
+                                                                >
+                                                                    Без достижений (0 б.)
+                                                                </Badge>
+                                                                <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                                                    Указано участником
+                                                                </div>
+                                                                <div className="small text-primary mt-1">
+                                                                    <BsEye size={11} /> Открыть
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Badge
+                                                                    bg="success-subtle"
+                                                                    className="text-success border border-success-subtle px-2 py-1 fs-6"
+                                                                >
+                                                                    {app.portfolio?.score || 0} б.
+                                                                </Badge>
+                                                                <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                                                    {realAchievementsCount} достижений
+                                                                </div>
+                                                                <div className="small text-primary mt-1">
+                                                                    <BsEye size={11} /> Открыть
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <Badge bg="secondary-subtle" className="text-muted border">
@@ -761,7 +817,7 @@ const ApplicationsPage: React.FC = () => {
                                             <span className="fw-bold text-dark">Ведомость достижений</span>
                                         </div>
 
-                                        {selectedApp.portfolio?.file_path && (() => {
+                                        {!selectedAppHasNoAchievements && selectedApp.portfolio?.file_path && (() => {
                                             const fullUrl = buildFileDownloadUrl(selectedApp.portfolio.file_path);
                                             if (!fullUrl) return null;
 
@@ -783,17 +839,41 @@ const ApplicationsPage: React.FC = () => {
 
                                     <Card.Body className="p-3 d-flex flex-column gap-3">
                                         {/* Сводный баннер итогового балла */}
-                                        <div className="d-flex justify-content-between align-items-center p-3 rounded-3 bg-primary-subtle border border-primary-subtle">
+                                        <div
+                                            className={`d-flex justify-content-between align-items-center p-3 rounded-3 border ${
+                                                selectedAppHasNoAchievements
+                                                    ? "bg-secondary-subtle border-secondary-subtle"
+                                                    : "bg-primary-subtle border-primary-subtle"
+                                            }`}
+                                        >
                                             <div>
-                                                <div className="text-primary-emphasis small fw-semibold text-uppercase">
+                                                <div
+                                                    className={`small fw-semibold text-uppercase ${
+                                                        selectedAppHasNoAchievements
+                                                            ? "text-secondary-emphasis"
+                                                            : "text-primary-emphasis"
+                                                    }`}
+                                                >
                                                     Предварительный балл
                                                 </div>
-                                                <div className="display-6 fw-bold text-primary mb-0 lh-1 mt-1">
-                                                    {selectedApp.portfolio?.score ?? calculatedTotalScore} <span className="fs-5 fw-normal">баллов</span>
+                                                <div
+                                                    className={`display-6 fw-bold mb-0 lh-1 mt-1 ${
+                                                        selectedAppHasNoAchievements ? "text-secondary" : "text-primary"
+                                                    }`}
+                                                >
+                                                    {selectedAppHasNoAchievements
+                                                        ? 0
+                                                        : selectedApp.portfolio?.score ?? calculatedTotalScore}{" "}
+                                                    <span className="fs-5 fw-normal">баллов</span>
                                                 </div>
                                             </div>
-                                            <Badge bg="primary" className="fs-6 px-3 py-2 rounded-pill fw-normal">
-                                                {selectedParsedAchievements.length} заявленных пунктов
+                                            <Badge
+                                                bg={selectedAppHasNoAchievements ? "secondary" : "primary"}
+                                                className="fs-6 px-3 py-2 rounded-pill fw-normal"
+                                            >
+                                                {selectedAppHasNoAchievements
+                                                    ? "Нет достижений"
+                                                    : `${selectedParsedAchievements.length} заявленных пунктов`}
                                             </Badge>
                                         </div>
 
@@ -805,8 +885,19 @@ const ApplicationsPage: React.FC = () => {
                                             </div>
                                         )}
 
-                                        {/* Список подтвержденных олимпиад */}
-                                        {selectedParsedAchievements.length > 0 ? (
+                                        {/* Отдельное отображение для NO_ACHIEVEMENTS vs Список олимпиад */}
+                                        {selectedAppHasNoAchievements ? (
+                                            <div className="p-4 bg-white border border-secondary-subtle rounded-3 text-center my-auto">
+                                                <BsInfoCircle size={32} className="text-secondary mb-2" />
+                                                <h6 className="fw-bold text-dark mb-1">
+                                                    Участник указал отсутствие индивидуальных достижений
+                                                </h6>
+                                                <p className="text-muted small mb-0">
+                                                    При подаче заявки был выбран пункт «У меня нет индивидуальных достижений (портфолио)».
+                                                    Презентация не требуется, предварительный рейтинг составляет 0 баллов.
+                                                </p>
+                                            </div>
+                                        ) : selectedParsedAchievements.length > 0 ? (
                                             <div className="d-flex flex-column gap-2" style={{ maxHeight: "380px", overflowY: "auto" }}>
                                                 {selectedParsedAchievements.map((item, idx) => (
                                                     <div
@@ -849,7 +940,6 @@ const ApplicationsPage: React.FC = () => {
                                                             </div>
                                                         </div>
 
-                                                        {/* Блок баллов: строго без переноса строки */}
                                                         <div className="text-end text-nowrap flex-shrink-0 ps-2" style={{ minWidth: "90px" }}>
                                                             <span className="badge bg-primary-subtle text-primary border border-primary-subtle fs-6 font-monospace py-1 px-2">
                                                                 +{item.score} б.
@@ -860,7 +950,7 @@ const ApplicationsPage: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="text-center py-4 text-muted bg-light border rounded">
-                                                Участник не указал индивидуальные достижения в портфолио
+                                                Портфолио не прикреплено или список достижений пуст
                                             </div>
                                         )}
                                     </Card.Body>
@@ -1004,7 +1094,6 @@ const ApplicationsPage: React.FC = () => {
                                 </div>
                             )
                         ) : (
-                            /* Рендеринг PDF с параметром inline=true в iframe */
                             <iframe
                                 src={`${inlineFileUrl}#toolbar=1`}
                                 title="Просмотр PDF"

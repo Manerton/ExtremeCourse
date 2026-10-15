@@ -17,32 +17,24 @@ interface Props {
     hasActiveApplication?: boolean;
 }
 
-interface NewlyCreatedApplicationData {
-    id: string;
-    programName: string;
-    subjectName: string;
-    classParticipation: number;
-}
-
 const OlympiadsSimpleTable: React.FC<Props> = ({
-                                                   user_class,
-                                                   user_school_id,
-                                                   onApplied,
-                                                   reloadFlag,
-                                                   appliedEventIds,
-                                                   hasActiveApplication = false
-                                               }) => {
+    user_class,
+    user_school_id,
+    onApplied,
+    reloadFlag,
+    appliedEventIds,
+    hasActiveApplication = false
+}) => {
     const { user, accessToken } = useAuth();
 
     const [olympiads, setOlympiads] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
-    const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
 
-    // Стейты для управления модальным окном портфолио
+    // Стейты для модального окна (храним выбранную программу до фактического создания заявки)
     const [showPortfolioModal, setShowPortfolioModal] = useState(false);
-    const [newApplication, setNewApplication] = useState<NewlyCreatedApplicationData | null>(null);
+    const [pendingEvent, setPendingEvent] = useState<Event | null>(null);
 
     useEffect(() => {
         if (!accessToken) return;
@@ -61,7 +53,8 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
         );
     };
 
-    const handleSubmit = async (event: Event) => {
+    // Шаг 1: При нажатии "Подать заявку" только проверяем класс и открываем модалку
+    const handleOpenModal = (event: Event) => {
         if (hasActiveApplication) return;
         setActionError(null);
 
@@ -72,36 +65,29 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
             return;
         }
 
+        setPendingEvent(event);
+        setShowPortfolioModal(true);
+    };
+
+    // Шаг 2: Функция создания заявки, которая вызовется ВНУТРИ модального окна при подтверждении
+    const handleCreateApplication = async (event: Event): Promise<string> => {
+        const applicationPayload = {
+            userId: user?.id.toString(),
+            eventId: event.id,
+            schoolId: user_school_id,
+            class_participation: event.class,
+        } as unknown as Application;
+
         try {
-            setSubmittingEventId(event.id);
-
-            const applicationPayload = {
-                userId: user?.id.toString(),
-                eventId: event.id,
-                schoolId: user_school_id,
-                class_participation: event.class,
-            } as unknown as Application;
-
-            // 1. Создаем заявку на бэкенде
             const response = await axiosCreateApplication(accessToken!, applicationPayload);
-
-            // Извлекаем application_id из response.data или response
             const payload = response?.data ?? response;
             const applicationId = payload?.application_id || payload?.id;
 
-            if (applicationId) {
-                // 2. Просто открываем окно. Никаких GET-запросов портфолио здесь нет!
-                setNewApplication({
-                    id: applicationId,
-                    programName: event.name,
-                    subjectName: event.subject || event.name.replace(/^Олимпиадная\s+/i, ""),
-                    classParticipation: event.class,
-                });
-                setShowPortfolioModal(true);
-            } else {
-                alert("Заявка создана! Вам необходимо прикрепить портфолио в разделе «Мои заявки».");
-                onApplied();
+            if (!applicationId) {
+                throw new Error("Не удалось получить ID созданной заявки от сервера.");
             }
+
+            return applicationId;
         } catch (e: any) {
             console.error("Ошибка при отправке заявки:", e);
 
@@ -115,16 +101,13 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                 ) {
                     const message = `Невозможно подать заявку: ваш текущий класс (${user_class}) старше, чем класс проведения программы (${event.class} класс). Вы можете участвовать только в олимпиадах для своего класса или более старших параллелей.`;
                     setActionError(message);
-                    alert(message);
-                    return;
+                    throw new Error(message);
                 }
             }
 
-            const fallbackError = "Произошла ошибка при отправке заявки. Попробуйте позже.";
-            setActionError(fallbackError);
-            alert(fallbackError);
-        } finally {
-            setSubmittingEventId(null);
+            throw new Error(
+                e.response?.data?.message || "Произошла ошибка при создании заявки. Попробуйте позже."
+            );
         }
     };
 
@@ -142,8 +125,7 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
 
     const renderActionButton = (olymp: Event) => {
         const isTooOld = Boolean(user_class && user_class > olymp.class && !isEconomics(olymp));
-        const isSubmittingThis = submittingEventId === olymp.id;
-        const isDisabled = hasActiveApplication || isTooOld || Boolean(submittingEventId);
+        const isDisabled = hasActiveApplication || isTooOld;
 
         const tooltipText = hasActiveApplication
             ? "У вас уже есть активная заявка. Отзовите её, чтобы выбрать другую программу."
@@ -157,15 +139,9 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                 className="w-100"
                 disabled={isDisabled}
                 style={isDisabled ? { pointerEvents: "none" } : undefined}
-                onClick={() => handleSubmit(olymp)}
+                onClick={() => handleOpenModal(olymp)}
             >
-                {isSubmittingThis
-                    ? "Создание..."
-                    : hasActiveApplication
-                        ? "Недоступно"
-                        : isTooOld
-                            ? "Недоступно"
-                            : "Подать заявку"}
+                {hasActiveApplication || isTooOld ? "Недоступно" : "Подать заявку"}
             </Button>
         );
 
@@ -173,11 +149,7 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
             return (
                 <OverlayTrigger
                     placement="top"
-                    overlay={
-                        <Tooltip id={`tooltip-${olymp.id}`}>
-                            {tooltipText}
-                        </Tooltip>
-                    }
+                    overlay={<Tooltip id={`tooltip-${olymp.id}`}>{tooltipText}</Tooltip>}
                 >
                     <span className="d-block w-100" tabIndex={0}>
                         {buttonNode}
@@ -215,7 +187,7 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                     <h4 className="mb-1">Внимание</h4>
                     <p className="mb-0">
                         Пожалуйста, выберите интересующую вас программу и нажмите кнопку
-                        <strong> «Подать заявку»</strong>, после чего откроется форма для прикрепления портфолио.
+                        <strong> «Подать заявку»</strong>, после чего откроется форма для заполнения портфолио и подтверждения заявки.
                     </p>
                 </div>
             </div>
@@ -285,26 +257,23 @@ const OlympiadsSimpleTable: React.FC<Props> = ({
                 </>
             )}
 
-            {/* Модальное окно портфолио, открывающееся сразу после подачи */}
-            {newApplication && (
+            {/* Модальное окно портфолио: если закрыть его крестиком или кнопкой "Отмена", заявка НЕ создается */}
+            {pendingEvent && (
                 <PortfolioModal
                     show={showPortfolioModal}
                     onHide={() => {
-                        // Закрыли без сохранения — теперь обновляем список, чтобы отобразить созданную заявку
                         setShowPortfolioModal(false);
-                        setNewApplication(null);
-                        onApplied();
+                        setPendingEvent(null);
                     }}
-                    applicationId={newApplication.id}
-                    programName={newApplication.programName}
-                    subjectName={newApplication.subjectName}
-                    classParticipation={newApplication.classParticipation}
+                    onCreateApplication={() => handleCreateApplication(pendingEvent)}
+                    programName={pendingEvent.name}
+                    subjectName={pendingEvent.subject || pendingEvent.name.replace(/^Олимпиадная\s+/i, "")}
+                    classParticipation={pendingEvent.class}
                     token={accessToken!}
-                    existingPortfolio={null} // Заведомо null: режим создания, никаких запросов
+                    existingPortfolio={null}
                     onSuccess={() => {
-                        // Сохранили портфолио — теперь обновляем список
                         setShowPortfolioModal(false);
-                        setNewApplication(null);
+                        setPendingEvent(null);
                         onApplied();
                     }}
                 />

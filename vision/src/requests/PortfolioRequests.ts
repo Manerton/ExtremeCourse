@@ -1,7 +1,8 @@
 import axios from "axios";
 
 export const Achievement = {
-    SiriusParticipant: "SIRIUS_PARTICIPANT", // <-- Добавлено
+    NoAchievements: "NO_ACHIEVEMENTS", // <-- Код отсутствия достижений
+    SiriusParticipant: "SIRIUS_PARTICIPANT",
     MaxwellWinner: "MAXWELL_WINNER",
     MaxwellPrizeWinner: "MAXWELL_PRIZE_WINNER",
     EulerWinner: "EULER_WINNER",
@@ -18,10 +19,11 @@ export const Achievement = {
     MathRegPrizeWinner: "MATH_REG_PRIZE_WINNER",
 } as const;
 
-export type AchievementType = typeof Achievement[keyof typeof Achievement];
+export type AchievementType = typeof Achievement[keyof typeof Achievement] | string;
 
-export const ACHIEVEMENT_SCORES: Record<AchievementType, number> = {
-    [Achievement.SiriusParticipant]: 20, // <-- Добавлено (20 баллов)
+export const ACHIEVEMENT_SCORES: Record<string, number> = {
+    [Achievement.NoAchievements]: 0, // <-- 0 баллов
+    [Achievement.SiriusParticipant]: 20,
     [Achievement.MaxwellWinner]: 20,
     [Achievement.MaxwellPrizeWinner]: 10,
     [Achievement.EulerWinner]: 20,
@@ -37,7 +39,6 @@ export const ACHIEVEMENT_SCORES: Record<AchievementType, number> = {
     [Achievement.MathRegWinner]: 40,
     [Achievement.MathRegPrizeWinner]: 20,
 };
-
 
 export interface PortfolioData {
     id?: string;
@@ -124,9 +125,7 @@ export const MINOBR_OLYMPIADS: MinobrOlympiadItem[] = [
     { id: 83, name: 'Университетская олимпиада школьников "Бельчонок"', winnerCode: "BELCHONOK_WINNER", prizeCode: "BELCHONOK_PRIZE_WINNER", subjects: ["INFORMATICS", "MATHEMATICS", "PHYSICS", "CHEMISTRY"] },
 ];
 
-
 const API_URL = import.meta.env.VITE_API_URL || "/api";
-
 const PORTFOLIO_API = `${API_URL}/applications`;
 
 // Получение портфолио по ID заявки
@@ -141,7 +140,6 @@ export async function axiosGetPortfolioByApplicationId(token: string, applicatio
         const status = e.response?.status;
         const message = e.response?.data?.message;
 
-        // Если портфолио еще не прикреплено (сервер возвращает 404 или 400 "portfolio not found")
         if (status === 404 || (status === 400 && message === "portfolio not found")) {
             return null;
         }
@@ -150,18 +148,21 @@ export async function axiosGetPortfolioByApplicationId(token: string, applicatio
     }
 }
 
-// Загрузка нового портфолио (multipart/form-data)
+// Загрузка нового портфолио (multipart/form-data) — файл опционален, если выбрано NO_ACHIEVEMENTS
 export async function axiosUploadPortfolio(
     token: string,
     applicationId: string,
     description: string,
     achievements: AchievementType[],
-    file: File
+    file?: File | null
 ) {
     const formData = new FormData();
     formData.append("description", description);
     achievements.forEach((ach) => formData.append("achievements", ach));
-    formData.append("file", file);
+
+    if (file) {
+        formData.append("file", file);
+    }
 
     const res = await axios.post(`${PORTFOLIO_API}/${applicationId}/portfolio`, formData, {
         headers: {
@@ -173,7 +174,7 @@ export async function axiosUploadPortfolio(
     return res.data;
 }
 
-// Редактирование существующего портфолио (PATCH JSON)
+// Редактирование существующего портфолио (PATCH multipart/form-data)
 export async function axiosUpdatePortfolio(
     token: string,
     applicationId: string,

@@ -9,6 +9,7 @@ type AchievementType string
 
 // Базовые олимпиады
 const (
+	NoAchievements                   AchievementType = "NO_ACHIEVEMENTS"
 	AchievementMaxwellWinner         AchievementType = "MAXWELL_WINNER"
 	AchievementMaxwellPrizeWinner    AchievementType = "MAXWELL_PRIZE_WINNER"
 	AchievementEulerWinner           AchievementType = "EULER_WINNER"
@@ -202,6 +203,7 @@ type AchievementInfo struct {
 
 var AchievementRegistry = map[AchievementType]AchievementInfo{
 	// Базовые
+	NoAchievements:                   {Score: 0, OlympiadName: "Нет достижений"},
 	AchievementMaxwellWinner:         {Score: 20, OlympiadName: "Всероссийская олимпиада по физике имени Дж. К. Максвелла"},
 	AchievementMaxwellPrizeWinner:    {Score: 10, OlympiadName: "Всероссийская олимпиада по физике имени Дж. К. Максвелла"},
 	AchievementEulerWinner:           {Score: 20, OlympiadName: "Олимпиада имени Леонарда Эйлера по математике"},
