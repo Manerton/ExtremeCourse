@@ -257,6 +257,7 @@ func (a *App) initRoutes(router *chi.Mux,
 			r.Get("/api/applications/full-details", applicationHandler.GetAllFullApplications)
 			r.Patch("/api/applications/invite/{applicationID}", applicationHandler.OrganizationInvite)
 			r.Patch("/api/applications/reject/{applicationID}", applicationHandler.OrganizationReject)
+			r.Patch("/api/applications/default/{applicationID}", applicationHandler.OrganizationDefault)
 			r.Get("/api/applications/export-excel", applicationHandler.ExportApplicationsToExcel)
 		})
 

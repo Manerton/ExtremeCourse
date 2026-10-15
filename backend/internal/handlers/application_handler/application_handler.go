@@ -396,6 +396,25 @@ func (h *ApplicationHandler) OrganizationInvite(w http.ResponseWriter, r *http.R
 	})
 }
 
+func (h *ApplicationHandler) OrganizationDefault(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	idStr := chi.URLParam(r, "applicationID")
+
+	if err := h.service.SetStatus(ctx, idStr, models.ApprovedStatus); err != nil {
+		h.logger.Error("Ошибка обновления статуса заявок", slog.Any("error", err))
+		http.Error(w, "Не удалось обновить заявку", http.StatusInternalServerError)
+		return
+	}
+
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       "application invited successfully",
+	})
+}
+
 func (h *ApplicationHandler) OrganizationReject(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

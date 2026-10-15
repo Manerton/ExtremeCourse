@@ -19,6 +19,7 @@ export const API_CONFIG = {
     DELETEMANYJURY: `${API_URL}/jury-assignments/delete/many`,
     ALLAPPLICATIONS: `${API_URL}/applications/full-details`,
     INVITEAPPLICATION: `${API_URL}/applications/invite/`,
+    DEFAULTAPPLICATION: `${API_URL}/applications/default/`,
     REJECTAPPLICATION: `${API_URL}/applications/reject/`,
 };
 

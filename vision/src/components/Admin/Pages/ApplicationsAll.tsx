@@ -38,6 +38,7 @@ import {
 import { useAuth } from "../../Helpers/AuthContext";
 import { FullApplicationDetailsDTO } from "../../types/application";
 import {
+    axiosDefaultApplication,
     axiosGetFullApplications,
     axiosInviteApplication,
     axiosRejectApplication
@@ -241,6 +242,24 @@ const ApplicationsPage: React.FC = () => {
             }
         } catch (err: any) {
             alert(err.response?.data?.message || "Ошибка при одобрении заявки");
+        } finally {
+            setStatusUpdating(false);
+        }
+    };
+
+    const handleDefault = async (appId: string) => {
+        if (!accessToken) return;
+        setStatusUpdating(true);
+        try {
+            await axiosDefaultApplication(accessToken, appId);
+            setApplications((prev) =>
+                prev.map((item) => (item.id === appId ? { ...item, status: 2 } : item))
+            );
+            if (selectedApp && selectedApp.id === appId) {
+                setSelectedApp((prev) => (prev ? { ...prev, status: 2 } : null));
+            }
+        } catch (err: any) {
+            alert(err.response?.data?.message || "Ошибка при рассмотрении заявки");
         } finally {
             setStatusUpdating(false);
         }
@@ -876,6 +895,13 @@ const ApplicationsPage: React.FC = () => {
                                 onClick={() => handleReject(selectedApp.id)}
                             >
                                 {statusUpdating ? <Spinner size="sm" animation="border" /> : "Отклонить"}
+                            </Button>
+                            <Button
+                                variant="warning"
+                                disabled={selectedApp.status === 2 || statusUpdating}
+                                onClick={() => handleDefault(selectedApp.id)}
+                            >
+                                {statusUpdating ? <Spinner size="sm" animation="border" /> : "Отправить на рассмотрение"}
                             </Button>
                             <Button
                                 variant="success"

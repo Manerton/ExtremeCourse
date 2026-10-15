@@ -29,7 +29,7 @@ func (s *ExcelService) generateURLDownload(path string) string {
 		return ""
 	}
 	// url.QueryEscape корректно кодирует кириллицу и спецсимволы в query-параметре
-	return fmt.Sprintf("https://shif.schooltech.ru/api/files/download?path=%s", url.QueryEscape(cleanPath))
+	return fmt.Sprintf("https://shift.schooltech.ru/api/files/download?path=%s", url.QueryEscape(cleanPath))
 }
 
 func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []ApplicationDto.FullApplicationDetailsDTO) (*bytes.Buffer, error) {
@@ -243,10 +243,12 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 func getStatusName(status int) string {
 	switch status {
 	case 1:
-		return "На рассмотрении"
-	case 2:
 		return "Одобрено"
+	case 2:
+		return "На рассмотрении"
 	case 3:
+		return "Отозвана участником"
+	case 4:
 		return "Отклонено"
 	default:
 		return fmt.Sprintf("Статус %d", status)

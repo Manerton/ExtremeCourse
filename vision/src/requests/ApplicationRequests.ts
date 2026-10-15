@@ -188,6 +188,17 @@ export async function axiosInviteApplication(token: string, applicationId: strin
     );
 }
 
+export async function axiosDefaultApplication(token: string, applicationId: string) {
+    return axios.patch(
+        API_CONFIG.DEFAULTAPPLICATION + `${applicationId}`,
+        {},
+        {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+        }
+    );
+}
+
 export async function axiosRejectApplication(token: string, applicationId: string) {
     return axios.patch(
         API_CONFIG.REJECTAPPLICATION + `${applicationId}`,

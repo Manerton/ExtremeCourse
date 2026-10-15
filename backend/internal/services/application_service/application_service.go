@@ -242,6 +242,7 @@ func (s *ApplicationService) SwitchApplicationStatus(ctx context.Context, idStr 
 
 func (s *ApplicationService) SetStatus(ctx context.Context, appId string, status int) error {
 	const op = "services.application_service.SetStatus"
+	log := s.log.With(slog.String("op", op))
 
 	uid, err := uuid.Parse(appId)
 	if err != nil {
@@ -253,7 +254,20 @@ func (s *ApplicationService) SetStatus(ctx context.Context, appId string, status
 		return fmt.Errorf("%s: failed get by id: %w", op, err)
 	}
 
-	applicationNow.Status = status
+	resultStatusSet := status
+	if status == models.ApprovedStatus {
+		applications, err := s.repository.GetAllByFilter(ctx, s.db, models.Application{UserID: applicationNow.UserID, Status: models.ApprovedStatus}, nil, nil, nil)
+		if err != nil {
+			log.Error("failed get by status", liblogger.Err(err))
+			return fmt.Errorf("failed get by status: %w", err)
+		}
+
+		if len(applications) != 0 {
+			resultStatusSet = models.RejectedStatus
+		}
+	}
+
+	applicationNow.Status = resultStatusSet
 	if err := s.repository.UpdateApplication(ctx, s.db, applicationNow); err != nil {
 		return fmt.Errorf("%s: failed update application: %w", op, err)
 	}
