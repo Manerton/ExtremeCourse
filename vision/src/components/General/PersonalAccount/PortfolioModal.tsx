@@ -107,7 +107,6 @@ const PortfolioModal: React.FC<Props> = ({
     const currentSubjectCode = getSubjectCode(subjectName || programName);
     const subjectDative = getSubjectDative(subjectName || "соответствующей дисциплине");
 
-    // Флаги состояния выбора
     const isNoAchievementsSelected = selectedAchievements.includes(Achievement.NoAchievements);
     const hasRealAchievementsSelected = selectedAchievements.some(
         (code) => code !== Achievement.NoAchievements
@@ -132,12 +131,10 @@ const PortfolioModal: React.FC<Props> = ({
     const handleCheckboxToggle = (code: AchievementType) => {
         setError(null);
 
-        // Логика для пункта "У меня нет индивидуальных достижений"
         if (code === Achievement.NoAchievements) {
             if (isNoAchievementsSelected) {
                 setSelectedAchievements([]);
             } else {
-                // Если есть выбранные реальные достижения, включить NO_ACHIEVEMENTS нельзя
                 if (hasRealAchievementsSelected) return;
                 setSelectedAchievements([Achievement.NoAchievements]);
                 setFile(null);
@@ -148,7 +145,6 @@ const PortfolioModal: React.FC<Props> = ({
             return;
         }
 
-        // Если выбран пункт "Нет достижений", выбрать другие достижения нельзя
         if (isNoAchievementsSelected) return;
 
         setSelectedAchievements((prev) => {
@@ -217,15 +213,10 @@ const PortfolioModal: React.FC<Props> = ({
         e.preventDefault();
         setError(null);
 
+        // Проверяем только то, что выбран хотя бы один пункт (достижение или "У меня нет достижений")
+        // Прикрепление файла НЕ обязательно!
         if (selectedAchievements.length === 0) {
             setError("Пожалуйста, отметьте свои достижения или выберите пункт «У меня нет индивидуальных достижений».");
-            return;
-        }
-
-        // Если выбраны реальные достижения, проверяем наличие файла (нового или ранее загруженного)
-        const hasExistingFile = Boolean(existingPortfolio?.file_path);
-        if (!isNoAchievementsSelected && !file && !hasExistingFile) {
-            setError("Пожалуйста, прикрепите файл портфолио (.pdf или .pptx).");
             return;
         }
 
@@ -234,7 +225,6 @@ const PortfolioModal: React.FC<Props> = ({
 
             let targetAppId = applicationId;
 
-            // 1. Создаем заявку на бэкенде, если это подача новой заявки
             if (!targetAppId && onCreateApplication) {
                 targetAppId = await onCreateApplication();
             }
@@ -243,14 +233,15 @@ const PortfolioModal: React.FC<Props> = ({
                 throw new Error("Не удалось определить ID заявки.");
             }
 
-            // 2. Всегда отправляем портфолио (либо с кодами достижений + файлом, либо с кодом NO_ACHIEVEMENTS без файла)
+            const fileToSend = isNoAchievementsSelected ? null : file;
+
             if (isEditMode) {
                 await axiosUpdatePortfolio(
                     token,
                     targetAppId,
                     "",
                     selectedAchievements,
-                    isNoAchievementsSelected ? null : file
+                    fileToSend
                 );
             } else {
                 await axiosUploadPortfolio(
@@ -258,7 +249,7 @@ const PortfolioModal: React.FC<Props> = ({
                     targetAppId,
                     "",
                     selectedAchievements,
-                    isNoAchievementsSelected ? null : file
+                    fileToSend
                 );
             }
 
@@ -282,7 +273,7 @@ const PortfolioModal: React.FC<Props> = ({
                 <Modal.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
 
-                    {/* Пункт "У меня нет индивидуальных достижений" с собственным кодом NO_ACHIEVEMENTS */}
+                    {/* Пункт "У меня нет индивидуальных достижений" */}
                     <div
                         className={`p-3 mb-3 border rounded-3 shadow-sm transition-all ${
                             isNoAchievementsSelected
@@ -306,7 +297,7 @@ const PortfolioModal: React.FC<Props> = ({
                         )}
                     </div>
 
-                    {/* Блок остальных достижений и файла (блокируется при выборе NO_ACHIEVEMENTS) */}
+                    {/* Блок достижений и необязательного файла */}
                     <div
                         style={{
                             opacity: isNoAchievementsSelected ? 0.5 : 1,
@@ -314,7 +305,6 @@ const PortfolioModal: React.FC<Props> = ({
                             transition: "opacity 0.2s ease-in-out",
                         }}
                     >
-                        {/* Подсказка участнику */}
                         <Alert variant="warning" className="d-flex align-items-start gap-2 mb-3 shadow-sm border-warning">
                             <BsInfoCircle size={22} className="flex-shrink-0 mt-1 text-warning-emphasis" />
                             <div className="small">
@@ -521,7 +511,7 @@ const PortfolioModal: React.FC<Props> = ({
                                 </div>
                             )}
 
-                            {/* 8. Перечневые олимпиады Минобрнауки с фильтрацией по предмету */}
+                            {/* 8. Перечневые олимпиады Минобрнауки */}
                             <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                                 <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                     <div className="d-flex align-items-center">
@@ -547,7 +537,6 @@ const PortfolioModal: React.FC<Props> = ({
                                     </a>
                                 </div>
 
-                                {/* Поле поиска и переключатель профилей */}
                                 <div className="mb-2">
                                     <InputGroup size="sm">
                                         <InputGroup.Text className="bg-white">
@@ -592,7 +581,6 @@ const PortfolioModal: React.FC<Props> = ({
                                     )}
                                 </div>
 
-                                {/* Прокручиваемый список олимпиад */}
                                 <div
                                     className="bg-white border rounded p-2"
                                     style={{ maxHeight: "320px", overflowY: "auto" }}
@@ -656,7 +644,7 @@ const PortfolioModal: React.FC<Props> = ({
                                     <div className="small text-dark">
                                         <strong>Важная информация:</strong> по каждому из отмеченных вами пунктов
                                         необходимо вставить скан или фотографию подтверждающего документа в презентацию о себе,
-                                        строго следуя установленному шаблону.
+                                        следуя установленному шаблону.
                                     </div>
                                 </div>
                                 <Button
@@ -674,13 +662,10 @@ const PortfolioModal: React.FC<Props> = ({
                             </div>
                         </Alert>
 
-                        {/* Поле загрузки файла */}
+                        {/* Поле загрузки файла (НЕОБЯЗАТЕЛЬНОЕ) */}
                         <Form.Group className="mb-3">
                             <Form.Label className="d-block mb-1">
                                 <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
-                                {!isNoAchievementsSelected && !existingPortfolio?.file_path && (
-                                    <span className="text-danger ms-1">*</span>
-                                )}
                             </Form.Label>
 
                             <Alert
@@ -738,7 +723,7 @@ const PortfolioModal: React.FC<Props> = ({
                             <Form.Text className="text-muted d-block mt-2">
                                 {isEditMode && existingPortfolio?.file_path
                                     ? "Прикрепите новый файл, только если хотите заменить ранее загруженный."
-                                    : "Принимается только один файл форматов .pdf или .pptx."}
+                                    : "Принимается один файл форматов .pdf или .pptx."}
                             </Form.Text>
                         </Form.Group>
                     </div>
@@ -752,9 +737,7 @@ const PortfolioModal: React.FC<Props> = ({
                             ? "Отправка..."
                             : isEditMode
                                 ? "Обновить данные"
-                                : isNoAchievementsSelected
-                                    ? "Подать заявку без достижений"
-                                    : "Прикрепить и подать заявку"}
+                                : "Подать заявку"}
                     </Button>
                 </Modal.Footer>
             </Form>
