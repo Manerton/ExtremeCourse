@@ -9,7 +9,7 @@ import {
     MINOBR_OLYMPIADS,
     SubjectCode,
 } from "../../../requests/PortfolioRequests";
-import { BsBoxArrowUpRight, BsInfoCircle, BsSearch, BsX, BsFileEarmarkArrowDown } from "react-icons/bs";
+import { BsBoxArrowUpRight, BsInfoCircle, BsSearch, BsX, BsFileEarmarkArrowDown, BsXCircleFill } from "react-icons/bs";
 
 interface Props {
     show: boolean;
@@ -273,60 +273,66 @@ const PortfolioModal: React.FC<Props> = ({
                 <Modal.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
 
-                    {/* Пункт "У меня нет индивидуальных достижений" */}
-                    <div
-                        className={`p-3 mb-3 border rounded-3 shadow-sm transition-all ${
-                            isNoAchievementsSelected
-                                ? "bg-secondary-subtle border-secondary"
-                                : "bg-white border-secondary-subtle"
-                        }`}
-                    >
-                        <Form.Check
-                            type="checkbox"
-                            id="ach-no-achievements"
-                            className="fw-bold text-dark"
-                            label="У меня нет индивидуальных достижений (портфолио)"
-                            checked={isNoAchievementsSelected}
-                            disabled={hasRealAchievementsSelected}
-                            onChange={() => handleCheckboxToggle(Achievement.NoAchievements)}
-                        />
-                        {hasRealAchievementsSelected && (
-                            <Form.Text className="text-muted d-block ms-4 mt-1">
-                                Чтобы выбрать этот пункт, сначала снимите отметки с выбранных ниже достижений.
-                            </Form.Text>
-                        )}
-                    </div>
+                    {/* 1. Жёлтый алерт всегда активен и расположен сверху */}
+                    <Alert variant="warning" className="d-flex align-items-start gap-2 mb-3 shadow-sm border-warning">
+                        <BsInfoCircle size={22} className="flex-shrink-0 mt-1 text-warning-emphasis" />
+                        <div className="small">
+                            <strong>Обратите внимание:</strong> если у вас есть результаты в нескольких олимпиадах или этапах,
+                            обязательно <u>отметьте их во всех соответствующих категориях ниже</u>.
+                            Неотмеченные пункты <strong>не будут учтены</strong> при формировании рейтинга!
+                        </div>
+                    </Alert>
 
-                    {/* Блок достижений и необязательного файла */}
-                    <div
-                        style={{
-                            opacity: isNoAchievementsSelected ? 0.5 : 1,
-                            pointerEvents: isNoAchievementsSelected ? "none" : "auto",
-                            transition: "opacity 0.2s ease-in-out",
-                        }}
-                    >
-                        <Alert variant="warning" className="d-flex align-items-start gap-2 mb-3 shadow-sm border-warning">
-                            <BsInfoCircle size={22} className="flex-shrink-0 mt-1 text-warning-emphasis" />
-                            <div className="small">
-                                <strong>Обратите внимание:</strong> если у вас есть результаты в нескольких олимпиадах или этапах,
-                                обязательно <u>отметьте их во всех соответствующих категориях ниже</u>.
-                                Неотмеченные пункты <strong>не будут учтены</strong> при формировании рейтинга!
-                            </div>
-                        </Alert>
+                    <div className="mb-4">
+                        {/* 2. Заголовок */}
+                        <Form.Label className="d-block mb-3 fw-bold fs-6">
+                            Индивидуальные достижения участника:
+                        </Form.Label>
 
-                        <div className="mb-4">
-                            <Form.Label className="d-block mb-3 fw-bold fs-6">
-                                Индивидуальные достижения участника:
-                            </Form.Label>
+                        {/* 3. Пункт "У меня нет индивидуальных достижений" */}
+                        <div
+                            className={`p-3 mb-3 border rounded-3 shadow-sm transition-all bg-danger-subtle border-danger ${
+                                isNoAchievementsSelected ? "border-2 shadow" : ""
+                            }`}
+                        >
+                            <Form.Check
+                                type="checkbox"
+                                id="ach-no-achievements"
+                                className="fw-bold text-dark"
+                                label={
+                                <span className="d-inline-flex align-items-center">
+                                    <BsXCircleFill className="text-danger me-2 flex-shrink-0" size={18} />
+                                    <span>У меня нет индивидуальных достижений (портфолио)</span>
+                                </span>
+                                }
+                                checked={isNoAchievementsSelected}
+                                disabled={hasRealAchievementsSelected}
+                                onChange={() => handleCheckboxToggle(Achievement.NoAchievements)}
+                            />
+                            {hasRealAchievementsSelected && (
+                                <div className="alert alert-info py-1 px-2 mt-2 ms-4 mb-0 d-inline-flex align-items-center rounded-2 small text-info-emphasis border-info-subtle">
+                                    <BsInfoCircle className="me-2 flex-shrink-0" size={14} />
+                                    <span>Чтобы выбрать этот пункт, сначала снимите отметки с выбранных ниже достижений.</span>
+                                </div>
+                            )}
+                        </div>
 
+                        {/* 4. Блок, который затеняется и блокируется при выборе "Нет достижений" */}
+                        <div
+                            style={{
+                                opacity: isNoAchievementsSelected ? 0.45 : 1,
+                                pointerEvents: isNoAchievementsSelected ? "none" : "auto",
+                                transition: "opacity 0.2s ease-in-out",
+                            }}
+                        >
                             {/* 1. Региональный этап ВсОШ (10-11 классы) */}
                             {isSeniorClass && (
                                 <div className="p-3 mb-3 border rounded-3 bg-light shadow-sm">
                                     <div className="d-flex align-items-center mb-2">
                                         <Badge bg="info" className="me-2 text-dark">ВсОШ</Badge>
                                         <span className="fw-bold text-dark">
-                                            Региональный этап (10–11 классы) ({subjectName})
-                                        </span>
+                            Региональный этап (10–11 классы) ({subjectName})
+                        </span>
                                     </div>
                                     <Form.Check
                                         type="checkbox"
@@ -353,8 +359,8 @@ const PortfolioModal: React.FC<Props> = ({
                                 <div className="d-flex align-items-center mb-2">
                                     <Badge bg="primary" className="me-2">ВсОШ</Badge>
                                     <span className="fw-bold text-dark">
-                                        Муниципальный этап ({subjectName})
-                                    </span>
+                        Муниципальный этап ({subjectName})
+                    </span>
                                 </div>
                                 <Form.Check
                                     type="checkbox"
@@ -381,8 +387,8 @@ const PortfolioModal: React.FC<Props> = ({
                                     <div className="d-flex align-items-center mb-2">
                                         <Badge bg="warning" className="me-2 text-dark">ВсОШ</Badge>
                                         <span className="fw-bold text-dark">
-                                            Региональный этап по математике (10–11 классы)
-                                        </span>
+                            Региональный этап по математике (10–11 классы)
+                        </span>
                                     </div>
                                     <Form.Check
                                         type="checkbox"
@@ -410,8 +416,8 @@ const PortfolioModal: React.FC<Props> = ({
                                     <div className="d-flex align-items-center mb-2">
                                         <Badge bg="dark" className="me-2">ВсОШ</Badge>
                                         <span className="fw-bold text-dark">
-                                            Муниципальный этап по математике
-                                        </span>
+                            Муниципальный этап по математике
+                        </span>
                                     </div>
                                     <Form.Check
                                         type="checkbox"
@@ -440,8 +446,8 @@ const PortfolioModal: React.FC<Props> = ({
                                         Сириус
                                     </Badge>
                                     <span className="fw-bold text-dark">
-                                        Образовательный центр «Сириус»
-                                    </span>
+                        Образовательный центр «Сириус»
+                    </span>
                                 </div>
                                 <Form.Check
                                     type="checkbox"
@@ -459,8 +465,8 @@ const PortfolioModal: React.FC<Props> = ({
                                     <div className="d-flex align-items-center mb-2">
                                         <Badge bg="warning" className="me-2 text-dark">Математика</Badge>
                                         <span className="fw-bold text-dark">
-                                            Олимпиада им. Леонарда Эйлера
-                                        </span>
+                            Олимпиада им. Леонарда Эйлера
+                        </span>
                                     </div>
                                     <Form.Check
                                         type="checkbox"
@@ -488,8 +494,8 @@ const PortfolioModal: React.FC<Props> = ({
                                     <div className="d-flex align-items-center mb-2">
                                         <Badge bg="warning" className="me-2 text-dark">Физика</Badge>
                                         <span className="fw-bold text-dark">
-                                            Олимпиада им. Дж. Кл. Максвелла
-                                        </span>
+                            Олимпиада им. Дж. Кл. Максвелла
+                        </span>
                                     </div>
                                     <Form.Check
                                         type="checkbox"
@@ -517,8 +523,8 @@ const PortfolioModal: React.FC<Props> = ({
                                     <div className="d-flex align-items-center">
                                         <Badge bg="success" className="me-2">Минобрнауки</Badge>
                                         <span className="fw-bold text-dark">
-                                            Олимпиады из перечня Минобрнауки
-                                        </span>
+                            Олимпиады из перечня Минобрнауки
+                        </span>
                                         {selectedMinobrCount > 0 && (
                                             <Badge bg="primary" pill className="ms-2">
                                                 Выбрано: {selectedMinobrCount}
@@ -573,10 +579,10 @@ const PortfolioModal: React.FC<Props> = ({
                                                 onChange={(e) => setShowAllSubjects(e.target.checked)}
                                             />
                                             <span className="small text-muted">
-                                                {showAllSubjects
-                                                    ? "Все профили"
-                                                    : `Только профиль: ${subjectName || "текущий"}`}
-                                            </span>
+                                {showAllSubjects
+                                    ? "Все профили"
+                                    : `Только профиль: ${subjectName || "текущий"}`}
+                            </span>
                                         </div>
                                     )}
                                 </div>
@@ -634,98 +640,98 @@ const PortfolioModal: React.FC<Props> = ({
                                     )}
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Информационный блок с кнопкой скачивания шаблона */}
-                        <Alert variant="info" className="p-3 mb-4 border-info-subtle bg-info-subtle shadow-sm">
-                            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-                                <div className="d-flex align-items-start gap-2">
-                                    <BsInfoCircle size={22} className="text-primary flex-shrink-0 mt-1" />
-                                    <div className="small text-dark">
-                                        <strong>Важная информация:</strong> по каждому из отмеченных вами пунктов
-                                        необходимо вставить скан или фотографию подтверждающего документа в презентацию о себе,
-                                        следуя установленному шаблону.
+                            {/* Информационный блок с кнопкой скачивания шаблона */}
+                            <Alert variant="info" className="p-3 mb-4 border-info-subtle bg-info-subtle shadow-sm">
+                                <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                                    <div className="d-flex align-items-start gap-2">
+                                        <BsInfoCircle size={22} className="text-primary flex-shrink-0 mt-1" />
+                                        <div className="small text-dark">
+                                            <strong>Важная информация:</strong> по каждому из отмеченных вами пунктов
+                                            необходимо вставить скан или фотографию подтверждающего документа в презентацию о себе,
+                                            следуя установленному шаблону.
+                                        </div>
                                     </div>
+                                    <Button
+                                        as="a"
+                                        href={presentationTemplateUrl}
+                                        target="_blank"
+                                        rel="noreferrer noopener"
+                                        variant="primary"
+                                        className="d-inline-flex align-items-center gap-2 text-nowrap px-3 py-2 fw-semibold flex-shrink-0 shadow-sm"
+                                        title="Скачать шаблон презентации с Яндекс.Диска"
+                                    >
+                                        <BsFileEarmarkArrowDown size={18} />
+                                        <span>Скачать шаблон презентации</span>
+                                    </Button>
                                 </div>
-                                <Button
-                                    as="a"
-                                    href={presentationTemplateUrl}
-                                    target="_blank"
-                                    rel="noreferrer noopener"
-                                    variant="primary"
-                                    className="d-inline-flex align-items-center gap-2 text-nowrap px-3 py-2 fw-semibold flex-shrink-0 shadow-sm"
-                                    title="Скачать шаблон презентации с Яндекс.Диска"
-                                >
-                                    <BsFileEarmarkArrowDown size={18} />
-                                    <span>Скачать шаблон презентации</span>
-                                </Button>
-                            </div>
-                        </Alert>
-
-                        {/* Поле загрузки файла (НЕОБЯЗАТЕЛЬНОЕ) */}
-                        <Form.Group className="mb-3">
-                            <Form.Label className="d-block mb-1">
-                                <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
-                            </Form.Label>
-
-                            <Alert
-                                variant="warning"
-                                className="d-inline-flex align-items-center gap-2 py-1 px-3 mb-2 small rounded-pill border-0 bg-warning-subtle text-warning-emphasis"
-                            >
-                                <BsInfoCircle size={15} className="flex-shrink-0" />
-                                <span>Максимальный размер файла — <strong>100 МБ</strong></span>
                             </Alert>
 
-                            {isEditMode && existingPortfolio?.file_path && (
-                                <div className="small text-success mb-2 p-2 bg-success-subtle border border-success-subtle rounded">
-                                    ✓ Уже загружен файл: <code>{existingPortfolio.file_path.split("/").pop()}</code>
-                                </div>
-                            )}
+                            {/* Поле загрузки файла */}
+                            <Form.Group className="mb-3">
+                                <Form.Label className="d-block mb-1">
+                                    <strong>Загрузите файл с презентацией о себе (.pdf, .pptx):</strong>
+                                </Form.Label>
 
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                className="d-none"
-                                disabled={isNoAchievementsSelected}
-                                accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                                onChange={handleFileChange}
-                            />
-
-                            <div className="input-group">
-                                <Button
-                                    variant="outline-primary"
-                                    type="button"
-                                    disabled={isNoAchievementsSelected}
-                                    onClick={() => fileInputRef.current?.click()}
+                                <Alert
+                                    variant="warning"
+                                    className="d-inline-flex align-items-center gap-2 py-1 px-3 mb-2 small rounded-pill border-0 bg-warning-subtle text-warning-emphasis"
                                 >
-                                    <i className="bi bi-paperclip me-1"></i>
-                                    {file ? "Заменить файл" : "Выбрать файл"}
-                                </Button>
-                                <span className="form-control text-truncate bg-white text-muted">
-                                    {file ? file.name : "Файл не выбран"}
-                                </span>
-                                {file && (
-                                    <Button
-                                        variant="outline-danger"
-                                        type="button"
-                                        title="Очистить выбор"
-                                        disabled={isNoAchievementsSelected}
-                                        onClick={() => {
-                                            setFile(null);
-                                            if (fileInputRef.current) fileInputRef.current.value = "";
-                                        }}
-                                    >
-                                        ✕
-                                    </Button>
-                                )}
-                            </div>
+                                    <BsInfoCircle size={15} className="flex-shrink-0" />
+                                    <span>Максимальный размер файла — <strong>100 МБ</strong></span>
+                                </Alert>
 
-                            <Form.Text className="text-muted d-block mt-2">
-                                {isEditMode && existingPortfolio?.file_path
-                                    ? "Прикрепите новый файл, только если хотите заменить ранее загруженный."
-                                    : "Принимается один файл форматов .pdf или .pptx."}
-                            </Form.Text>
-                        </Form.Group>
+                                {isEditMode && existingPortfolio?.file_path && (
+                                    <div className="small text-success mb-2 p-2 bg-success-subtle border border-success-subtle rounded">
+                                        ✓ Уже загружен файл: <code>{existingPortfolio.file_path.split("/").pop()}</code>
+                                    </div>
+                                )}
+
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="d-none"
+                                    disabled={isNoAchievementsSelected}
+                                    accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                                    onChange={handleFileChange}
+                                />
+
+                                <div className="input-group">
+                                    <Button
+                                        variant="outline-primary"
+                                        type="button"
+                                        disabled={isNoAchievementsSelected}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <i className="bi bi-paperclip me-1"></i>
+                                        {file ? "Заменить файл" : "Выбрать файл"}
+                                    </Button>
+                                    <span className="form-control text-truncate bg-white text-muted">
+                        {file ? file.name : "Файл не выбран"}
+                    </span>
+                                    {file && (
+                                        <Button
+                                            variant="outline-danger"
+                                            type="button"
+                                            title="Очистить выбор"
+                                            disabled={isNoAchievementsSelected}
+                                            onClick={() => {
+                                                setFile(null);
+                                                if (fileInputRef.current) fileInputRef.current.value = "";
+                                            }}
+                                        >
+                                            ✕
+                                        </Button>
+                                    )}
+                                </div>
+
+                                <Form.Text className="text-muted d-block mt-2">
+                                    {isEditMode && existingPortfolio?.file_path
+                                        ? "Прикрепите новый файл, только если хотите заменить ранее загруженный."
+                                        : "Принимается один файл форматов .pdf или .pptx."}
+                                </Form.Text>
+                            </Form.Group>
+                        </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
