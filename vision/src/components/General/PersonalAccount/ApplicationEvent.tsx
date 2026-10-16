@@ -14,6 +14,9 @@ import PortfolioModal from "./PortfolioModal";
 
 const STATUS_ACTIVE = 2;   // Активная
 const STATUS_REVOKED = 3;  // Отозвана
+const STATUS_INVITE = 1;  // Отозвана
+const STATUS_REJECT = 4;
+
 
 export interface ApplicationItem {
     id: string;
@@ -180,6 +183,10 @@ const ApplicationEventPage: React.FC<Props> = ({ onApplied, reloadFlag }) => {
                                     <Badge bg="success">Активная</Badge>
                                 ) : ev.status === STATUS_REVOKED ? (
                                     <Badge bg="danger">Отозвана</Badge>
+                                ) : ev.status === STATUS_INVITE ? (
+                                    <Badge bg="secondary">Приглашён</Badge>
+                                ) : ev.status === STATUS_REJECT ? (
+                                    <Badge bg="secondary">Отклонена</Badge>
                                 ) : (
                                     <Badge bg="secondary">Неизвестно</Badge>
                                 )}
