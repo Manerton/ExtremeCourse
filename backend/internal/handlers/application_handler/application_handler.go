@@ -584,6 +584,17 @@ func (h *ApplicationHandler) UpdateApplicationStatus(w http.ResponseWriter, r *h
 	render.JSON(w, r, response.SuccessResponse(fmt.Sprintf("id = %s", idStr)))
 }
 
+func (h *ApplicationHandler) UpdateAllScores(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if err := h.service.UpdateActualScore(ctx); err != nil {
+		h.logger.Error("Ошибка обновления баллов пользователя", slog.Any("error", err))
+		http.Error(w, "Не удалось обновленить баллы пользователя", http.StatusInternalServerError)
+		return
+	}
+	render.JSON(w, r, response.SuccessResponse("Баллы обновлены"))
+}
+
 // Удаление заявки
 func (h *ApplicationHandler) DeleteApplication(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

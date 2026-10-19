@@ -158,8 +158,16 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 
 		achievementReadable := achievement_dictionary.FormatAchievements(app.Portfolio.CodeAchievement)
 
+		actualScore := 0
+		for _, code := range app.Portfolio.CodeAchievement {
+			if score, ok := achievement_dictionary.GetScore(achievement_dictionary.AchievementType(code)); ok {
+				actualScore += score
+			}
+		}
+
 		// Формируем текст для отображения в последней колонке
 		downloadURL := s.generateURLDownload(app.Portfolio.FilePath)
+
 		displayFileText := "-"
 		if downloadURL != "" {
 			displayFileText = "Скачать файл"
@@ -178,7 +186,7 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 			app.Event.Subject,
 			app.School.FullName,
 			app.School.DistrictName,
-			app.Portfolio.Score,
+			actualScore,
 			achievementReadable,
 			submittedAtStr,
 			displayFileText,

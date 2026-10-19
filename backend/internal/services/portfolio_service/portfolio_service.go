@@ -5,8 +5,8 @@ import (
 	"io"
 	"log/slog"
 
-	"main/internal/dictionary/achievement_dictionary"
 	dto "main/internal/dto/portfolio"
+	"main/internal/lib/calculate"
 	"main/internal/lib/errs"
 	"main/internal/lib/liblogger"
 	models "main/internal/models/portfolio"
@@ -44,15 +44,6 @@ func New(log *slog.Logger, db orm.ORM, repo PortfolioRepository, fileStorage Fil
 }
 
 // CalculateTotalScore суммирует баллы на основе справочника
-func (s *PortfolioService) calculateScore(codes []string) int {
-	total := 0
-	for _, code := range codes {
-		if score, ok := achievement_dictionary.GetScore(achievement_dictionary.AchievementType(code)); ok {
-			total += score
-		}
-	}
-	return total
-}
 
 func (s *PortfolioService) CreatePortfolio(
 	ctx context.Context,
@@ -79,7 +70,7 @@ func (s *PortfolioService) CreatePortfolio(
 		ApplicationID:   appID,
 		Description:     desc,
 		CodeAchievement: pq.StringArray(codes),
-		Score:           s.calculateScore(codes),
+		Score:           calculate.CalculateScore(codes),
 		FilePath:        savedPath,
 	}
 
@@ -138,7 +129,7 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, appIDStr string,
 	}
 	if update.CodeAchievement != nil {
 		p.CodeAchievement = update.CodeAchievement
-		p.Score = s.calculateScore(update.CodeAchievement)
+		p.Score = calculate.CalculateScore(update.CodeAchievement)
 	}
 
 	var oldPath string

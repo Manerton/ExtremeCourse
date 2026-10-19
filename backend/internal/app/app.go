@@ -259,6 +259,8 @@ func (a *App) initRoutes(router *chi.Mux,
 			r.Patch("/api/applications/reject/{applicationID}", applicationHandler.OrganizationReject)
 			r.Patch("/api/applications/default/{applicationID}", applicationHandler.OrganizationDefault)
 			r.Get("/api/applications/export-excel", applicationHandler.ExportApplicationsToExcel)
+
+			r.Patch("/api/applications/score/update", applicationHandler.UpdateAllScores)
 		})
 
 		r.Route("/api/applications/{application_id}/portfolio", func(r chi.Router) {

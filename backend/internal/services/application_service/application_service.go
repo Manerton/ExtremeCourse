@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	ApplicationDto "main/internal/dto/applications"
 	portfolio_dto "main/internal/dto/portfolio"
+	"main/internal/lib/calculate"
 	"main/internal/lib/errs"
 	"main/internal/lib/liblogger"
 	"main/internal/lib/verification"
@@ -57,6 +58,7 @@ type EventRepository interface {
 
 type PortfolioRepository interface {
 	GetByApplicationIDList(ctx context.Context, o orm.ORM, appIDs []uuid.UUID) ([]portfolio.Portfolio, error)
+	UpdateScore(ctx context.Context, orm orm.ORM, id uuid.UUID, score int) error
 }
 
 type ApplicationService struct {
@@ -129,6 +131,34 @@ func (s *ApplicationService) GetAllApplications(ctx context.Context, page *int, 
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return ConvertManyApplicationsToDTO(applications), nil
+}
+
+func (s *ApplicationService) UpdateActualScore(ctx context.Context) error {
+	const op = "services.application_service.UpdateActualScore"
+
+	applications, err := s.repository.GetAllApplications(ctx, s.db, nil, nil)
+	if err != nil {
+		return fmt.Errorf("%s", err)
+	}
+
+	appIds := make([]uuid.UUID, len(applications))
+	for i, app := range applications {
+		appIds[i] = app.ID
+	}
+
+	portfolios, err := s.portfolioRepo.GetByApplicationIDList(ctx, s.db, appIds)
+	if err != nil {
+		return fmt.Errorf("%s", err)
+	}
+
+	for _, pf := range portfolios {
+		userScore := calculate.CalculateScore(pf.CodeAchievement)
+		if err := s.portfolioRepo.UpdateScore(ctx, s.db, pf.ID, userScore); err != nil {
+			return fmt.Errorf("%s: failed update score: portfolio id = %s", op, pf.ID)
+		}
+	}
+
+	return nil
 }
 
 // Получение заявки по ID

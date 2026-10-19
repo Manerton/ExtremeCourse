@@ -44,7 +44,7 @@ import {
     axiosInviteApplication,
     axiosRejectApplication
 } from "../../../requests/ApplicationRequests";
-import { Achievement } from "../../../requests/PortfolioRequests";
+import { Achievement, axiosUpdateScores } from "../../../requests/PortfolioRequests";
 import { parseAchievement, ParsedAchievement } from "../../../utils/achievementCatalog";
 import { axiosDownloadApplicationsExcel, buildFileDownloadUrl } from "../../../requests/FilesRequests";
 
@@ -156,6 +156,20 @@ const ApplicationsPage: React.FC = () => {
     useEffect(() => {
         loadData(page, limit);
     }, [page, limit, accessToken]);
+
+
+    const handleUpdateScore = async () => {
+        if (!accessToken) return;
+        try {
+            const res = await axiosUpdateScores(accessToken)
+        } catch (err: any) {
+            setError(
+                err.response?.data?.message ||
+                err.message ||
+                "Не удалось обновить баллы"
+            );
+        } 
+    }
 
     const handleExportExcel = async () => {
         if (!accessToken) return;
@@ -375,6 +389,16 @@ const ApplicationsPage: React.FC = () => {
                             <BsFileEarmarkExcel />
                         )}
                         <span>{exporting ? "Экспорт..." : "Экспорт в Excel"}</span>
+                    </Button>
+
+                     <Button
+                        variant="outline-warning"
+                        size="sm"
+                        className="d-inline-flex align-items-center gap-1"
+                        onClick={handleUpdateScore}
+                        title="Обновить баллы"
+                    >
+                        <span>Обновить баллы</span>
                     </Button>
 
                     <Button

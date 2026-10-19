@@ -46,6 +46,15 @@ func (r *PortfolioRepository) GetByApplicationIDList(ctx context.Context, o orm.
 	return result, nil
 }
 
+func (r *PortfolioRepository) UpdateScore(ctx context.Context, o orm.ORM, id uuid.UUID, score int) error {
+	const op = "repositories.PortfolioRepository.UpdateScore"
+	err := o.Updates(ctx, models.Portfolio{ID: id}, models.Portfolio{Score: score})
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
 func (r *PortfolioRepository) Update(ctx context.Context, o orm.ORM, p *models.Portfolio) error {
 	const op = "repositories.PortfolioRepository.Update"
 	err := o.Updates(ctx, models.Portfolio{ID: p.ID}, p)
