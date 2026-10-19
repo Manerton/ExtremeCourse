@@ -149,7 +149,7 @@ export async function axiosGetPortfolioByApplicationId(token: string, applicatio
 }
 
 export async function axiosUpdateScores(token:string) {
-   const res = await axios.post(`${PORTFOLIO_API}/score/update`, {
+   const res = await axios.patch(`${PORTFOLIO_API}/score/update`, {
         headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
