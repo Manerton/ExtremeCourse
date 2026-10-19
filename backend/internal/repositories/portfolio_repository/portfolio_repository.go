@@ -48,7 +48,12 @@ func (r *PortfolioRepository) GetByApplicationIDList(ctx context.Context, o orm.
 
 func (r *PortfolioRepository) UpdateScore(ctx context.Context, o orm.ORM, id uuid.UUID, score int) error {
 	const op = "repositories.PortfolioRepository.UpdateScore"
-	err := o.Updates(ctx, models.Portfolio{ID: id}, models.Portfolio{Score: score})
+	fmt.Printf("new data %s:%s", id, score)
+	updates := map[string]interface{}{
+		"score": score,
+	}
+
+	err := o.Updates(ctx, models.Portfolio{ID: id}, updates)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

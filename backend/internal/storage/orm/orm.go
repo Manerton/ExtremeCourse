@@ -71,7 +71,7 @@ func (g *Gorm) Create(ctx context.Context, dest interface{}) error {
 
 func (g *Gorm) Updates(ctx context.Context, conditions interface{}, updates interface{}) error {
 	const op = "storage.orm.Update"
-	result := g.DB.WithContext(ctx).Where(conditions).Updates(updates)
+	result := g.DB.WithContext(ctx).Model(conditions).Where(conditions).Updates(updates)
 	if err := result.Error; err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
