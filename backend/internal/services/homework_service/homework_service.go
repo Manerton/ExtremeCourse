@@ -32,9 +32,11 @@ type HomeworkRepository interface {
 	CreateTaskAnswers(ctx context.Context, o orm.ORM, answers []answer_model.TaskAnswer) error
 	AddTaskToHomework(ctx context.Context, o orm.ORM, hwTask *homework_task_model.HomeworkTask) error
 	GetAvailableHomeworks(ctx context.Context, o orm.ORM, now time.Time) ([]homework_model.Homework, error)
+	GetAvailableHomeworksByEvent(ctx context.Context, o orm.ORM, eventID uuid.UUID, now time.Time) ([]homework_model.Homework, error)
 	GetHomeworkByID(ctx context.Context, o orm.ORM, id uuid.UUID) (homework_model.Homework, error)
 	GetHomeworkTasks(ctx context.Context, o orm.ORM, hwID uuid.UUID) ([]task_model.Task, error)
 	GetTaskAnswers(ctx context.Context, o orm.ORM, taskID uuid.UUID) ([]answer_model.TaskAnswer, error)
+	GetTaskAnswersByTaskIDs(ctx context.Context, o orm.ORM, taskIDs []uuid.UUID) ([]answer_model.TaskAnswer, error)
 	GetSubmission(ctx context.Context, o orm.ORM, hwID, userID uuid.UUID) (submission_model.HomeworkSubmission, error)
 	CreateSubmission(ctx context.Context, o orm.ORM, sub *submission_model.HomeworkSubmission) error
 	CreateSubmissionTaskResults(ctx context.Context, o orm.ORM, results []submission_model.SubmissionTaskResult) error
@@ -49,11 +51,12 @@ type HomeworkService struct {
 	userRepo UserRepository
 }
 
-func New(log *slog.Logger, db orm.ORM, repo HomeworkRepository) *HomeworkService {
+func New(log *slog.Logger, db orm.ORM, repo HomeworkRepository, userRepo UserRepository) *HomeworkService {
 	return &HomeworkService{
-		db:   db,
-		log:  log.With(slog.String("owner", "HomeworkService")),
-		repo: repo,
+		db:       db,
+		log:      log.With(slog.String("owner", "HomeworkService")),
+		repo:     repo,
+		userRepo: userRepo,
 	}
 }
 
@@ -61,11 +64,17 @@ func (s *HomeworkService) CreateHomework(ctx context.Context, dto homework_dto.C
 	const op = "services.HomeworkService.CreateHomework"
 	log := s.log.With(slog.String("op", op))
 
+	eventID, err := uuid.Parse(dto.EventID)
+	if err != nil {
+		return uuid.Nil, errs.ErrBadRequest.Wrap("invalid event id")
+	}
+
 	if dto.DeadlineAt.Before(dto.PublishAt) {
 		return uuid.Nil, errs.ErrBadRequest.Wrap("deadline cannot be earlier than publish date")
 	}
 
 	hw := homework_model.Homework{
+		EventId:    eventID,
 		Name:       dto.Name,
 		Status:     homework_model.HomeworkStatusPublished,
 		PublishAt:  dto.PublishAt,
@@ -147,11 +156,27 @@ func (s *HomeworkService) AddTaskToHomework(ctx context.Context, hwIDStr, taskID
 	return nil
 }
 
-func (s *HomeworkService) GetAvailableHomeworks(ctx context.Context) ([]homework_dto.HomeworkResponseDTO, error) {
+// GetAvailableHomeworks возвращает доступные ДЗ (все, либо отфильтрованные по eventIDStr)
+func (s *HomeworkService) GetAvailableHomeworks(ctx context.Context, eventIDStr string) ([]homework_dto.HomeworkResponseDTO, error) {
 	const op = "services.HomeworkService.GetAvailableHomeworks"
 	log := s.log.With(slog.String("op", op))
 
-	items, err := s.repo.GetAvailableHomeworks(ctx, s.db, time.Now())
+	now := time.Now()
+	var (
+		items []homework_model.Homework
+		err   error
+	)
+
+	if strings.TrimSpace(eventIDStr) != "" {
+		eventID, parseErr := uuid.Parse(eventIDStr)
+		if parseErr != nil {
+			return nil, errs.ErrBadRequest.Wrap("invalid event id")
+		}
+		items, err = s.repo.GetAvailableHomeworksByEvent(ctx, s.db, eventID, now)
+	} else {
+		items, err = s.repo.GetAvailableHomeworks(ctx, s.db, now)
+	}
+
 	if err != nil {
 		log.Error("failed fetch available homeworks", liblogger.Err(err))
 		return nil, errs.ErrInternalError
@@ -161,6 +186,7 @@ func (s *HomeworkService) GetAvailableHomeworks(ctx context.Context) ([]homework
 	for _, item := range items {
 		res = append(res, homework_dto.HomeworkResponseDTO{
 			ID:         item.ID.String(),
+			EventID:    item.EventId.String(),
 			Name:       item.Name,
 			Status:     item.Status,
 			PublishAt:  item.PublishAt,
@@ -168,6 +194,81 @@ func (s *HomeworkService) GetAvailableHomeworks(ctx context.Context) ([]homework
 		})
 	}
 	return res, nil
+}
+
+// GetHomeworkWithTasks возвращает выбранное ДЗ со списком всех задач и вариантов ответов (без флага правильности)
+func (s *HomeworkService) GetHomeworkWithTasks(ctx context.Context, hwIDStr string) (homework_dto.HomeworkDetailResponseDTO, error) {
+	const op = "services.HomeworkService.GetHomeworkWithTasks"
+	log := s.log.With(slog.String("op", op))
+
+	hwID, err := uuid.Parse(hwIDStr)
+	if err != nil {
+		return homework_dto.HomeworkDetailResponseDTO{}, errs.ErrBadRequest.Wrap("invalid homework id")
+	}
+
+	hw, err := s.repo.GetHomeworkByID(ctx, s.db, hwID)
+	if err != nil {
+		if s.db.IsNotFound(err) {
+			return homework_dto.HomeworkDetailResponseDTO{}, errs.ErrBadRequest.Wrap("homework not found")
+		}
+		log.Error("failed get homework by id", liblogger.Err(err))
+		return homework_dto.HomeworkDetailResponseDTO{}, errs.ErrInternalError
+	}
+
+	now := time.Now()
+	if hw.Status != homework_model.HomeworkStatusPublished || now.Before(hw.PublishAt) {
+		return homework_dto.HomeworkDetailResponseDTO{}, errs.ErrBadRequest.Wrap("homework is not available")
+	}
+
+	tasks, err := s.repo.GetHomeworkTasks(ctx, s.db, hwID)
+	if err != nil {
+		log.Error("failed get homework tasks", liblogger.Err(err))
+		return homework_dto.HomeworkDetailResponseDTO{}, errs.ErrInternalError
+	}
+
+	taskIDs := make([]uuid.UUID, 0, len(tasks))
+	for _, t := range tasks {
+		taskIDs = append(taskIDs, t.ID)
+	}
+
+	allAnswers, err := s.repo.GetTaskAnswersByTaskIDs(ctx, s.db, taskIDs)
+	if err != nil {
+		log.Error("failed get task answers", liblogger.Err(err))
+		return homework_dto.HomeworkDetailResponseDTO{}, errs.ErrInternalError
+	}
+
+	optionsByTask := make(map[uuid.UUID][]homework_dto.TaskOptionResponseDTO, len(tasks))
+	for _, ans := range allAnswers {
+		optionsByTask[ans.TaskId] = append(optionsByTask[ans.TaskId], homework_dto.TaskOptionResponseDTO{
+			ID:     ans.ID.String(),
+			Answer: ans.Answer,
+		})
+	}
+
+	taskDTOs := make([]homework_dto.HomeworkTaskResponseDTO, 0, len(tasks))
+	for _, t := range tasks {
+		opts := optionsByTask[t.ID]
+		if opts == nil {
+			opts = []homework_dto.TaskOptionResponseDTO{}
+		}
+		taskDTOs = append(taskDTOs, homework_dto.HomeworkTaskResponseDTO{
+			ID:          t.ID.String(),
+			Name:        t.Name,
+			Description: t.Description,
+			MaxPoints:   t.MaxPoints,
+			Options:     opts,
+		})
+	}
+
+	return homework_dto.HomeworkDetailResponseDTO{
+		ID:         hw.ID.String(),
+		EventID:    hw.EventId.String(),
+		Name:       hw.Name,
+		Status:     hw.Status,
+		PublishAt:  hw.PublishAt,
+		DeadlineAt: hw.DeadlineAt,
+		Tasks:      taskDTOs,
+	}, nil
 }
 
 func (s *HomeworkService) SubmitHomework(ctx context.Context, hwIDStr, userIDStr string, dto homework_dto.SubmitHomeworkRequestDTO) (homework_dto.SubmissionResponseDTO, error) {
@@ -209,27 +310,38 @@ func (s *HomeworkService) SubmitHomework(ctx context.Context, hwIDStr, userIDStr
 		return homework_dto.SubmissionResponseDTO{}, errs.ErrInternalError
 	}
 
-	// 3. Получаем задачи этой работы
+	// 3. Получаем задачи этой работы и их варианты ответов
 	tasks, err := s.repo.GetHomeworkTasks(ctx, s.db, hwID)
 	if err != nil {
 		log.Error("failed get tasks", liblogger.Err(err))
 		return homework_dto.SubmissionResponseDTO{}, errs.ErrInternalError
 	}
 
-	taskMap := make(map[uuid.UUID]task_model.Task, len(tasks))
+	taskIDs := make([]uuid.UUID, 0, len(tasks))
 	for _, t := range tasks {
-		taskMap[t.ID] = t
+		taskIDs = append(taskIDs, t.ID)
 	}
 
-	answersByUser := make(map[uuid.UUID]string)
+	allValidAnswers, err := s.repo.GetTaskAnswersByTaskIDs(ctx, s.db, taskIDs)
+	if err != nil {
+		log.Error("failed get answers for tasks", liblogger.Err(err))
+		return homework_dto.SubmissionResponseDTO{}, errs.ErrInternalError
+	}
+
+	validAnswersByTask := make(map[uuid.UUID][]answer_model.TaskAnswer, len(tasks))
+	for _, va := range allValidAnswers {
+		validAnswersByTask[va.TaskId] = append(validAnswersByTask[va.TaskId], va)
+	}
+
+	answersByUser := make(map[uuid.UUID]homework_dto.SubmitAnswerItemDTO, len(dto.Answers))
 	for _, a := range dto.Answers {
 		tid, parseErr := uuid.Parse(a.TaskID)
 		if parseErr == nil {
-			answersByUser[tid] = a.Answer
+			answersByUser[tid] = a
 		}
 	}
 
-	// 4. Автоматическая проверка
+	// 4. Автоматическая проверка всех задач ДЗ
 	tx, err := s.db.TransactionBegin()
 	if err != nil {
 		return homework_dto.SubmissionResponseDTO{}, errs.ErrInternalError
@@ -241,17 +353,23 @@ func (s *HomeworkService) SubmitHomework(ctx context.Context, hwIDStr, userIDStr
 	results := make([]submission_model.SubmissionTaskResult, 0, len(tasks))
 	dtoResults := make([]homework_dto.TaskResultResponseDTO, 0, len(tasks))
 
-	for tID, tModel := range taskMap {
-		userAns := answersByUser[tID]
-		validAnswers, err := s.repo.GetTaskAnswers(ctx, tx, tID)
-		if err != nil {
-			log.Error("failed get correct answers", liblogger.Err(err))
-			return homework_dto.SubmissionResponseDTO{}, errs.ErrInternalError
-		}
+	for _, tModel := range tasks {
+		tID := tModel.ID
+		userSubmission := answersByUser[tID]
+		validAnswers := validAnswersByTask[tID]
 
+		userAnswerText := userSubmission.Answer
 		isCorrect := false
+
 		for _, va := range validAnswers {
-			if va.Correct && strings.EqualFold(strings.TrimSpace(va.Answer), strings.TrimSpace(userAns)) {
+			matchedByID := userSubmission.AnswerID != "" && strings.EqualFold(va.ID.String(), userSubmission.AnswerID)
+			matchedByText := userSubmission.Answer != "" && strings.EqualFold(strings.TrimSpace(va.Answer), strings.TrimSpace(userSubmission.Answer))
+
+			if matchedByID && userAnswerText == "" {
+				userAnswerText = va.Answer
+			}
+
+			if va.Correct && (matchedByID || matchedByText) {
 				isCorrect = true
 				break
 			}
@@ -266,14 +384,14 @@ func (s *HomeworkService) SubmitHomework(ctx context.Context, hwIDStr, userIDStr
 		results = append(results, submission_model.SubmissionTaskResult{
 			SubmissionID:  subID,
 			TaskID:        tID,
-			UserAnswer:    userAns,
+			UserAnswer:    userAnswerText,
 			IsCorrect:     isCorrect,
 			PointsAwarded: score,
 		})
 
 		dtoResults = append(dtoResults, homework_dto.TaskResultResponseDTO{
 			TaskID:        tID.String(),
-			UserAnswer:    userAns,
+			UserAnswer:    userAnswerText,
 			IsCorrect:     isCorrect,
 			PointsAwarded: score,
 		})
@@ -357,12 +475,10 @@ func (s *HomeworkService) GetEventLeaderboard(ctx context.Context, eventIDStr st
 		return []homework_dto.EventLeaderboardItemDTO{}, nil
 	}
 
-	// Сортировка по суммарным баллам (DESC)
 	sort.Slice(userScores, func(i, j int) bool {
 		return userScores[i].TotalScore > userScores[j].TotalScore
 	})
 
-	// Сбор UserID для выборки профилей
 	userIDs := make([]uuid.UUID, 0, len(userScores))
 	for _, row := range userScores {
 		userIDs = append(userIDs, row.UserID)
@@ -379,7 +495,6 @@ func (s *HomeworkService) GetEventLeaderboard(ctx context.Context, eventIDStr st
 		usersMap[u.ID] = u
 	}
 
-	// Формирование итоговой таблицы с присвоением рангов
 	leaderboard := make([]homework_dto.EventLeaderboardItemDTO, 0, len(userScores))
 	for i, row := range userScores {
 		u := usersMap[row.UserID]

@@ -22,7 +22,7 @@ func New(s *service.HomeworkService) *HomeworkHandler {
 
 // @Summary Create homework
 // @Security BearerAuth
-// @Description Создание новой домашней работы с указанием сроков публикации и дедлайна
+// @Description Создание новой домашней работы с привязкой к событию и указанием сроков
 // @Tags homeworks
 // @Accept json
 // @Produce json
@@ -131,16 +131,23 @@ func (h *HomeworkHandler) AddTaskToHomework(w http.ResponseWriter, r *http.Reque
 	render.JSON(w, r, response.SuccessResponse("task linked to homework"))
 }
 
-// @Summary Get available homeworks
+// @Summary Get available homeworks (optionally filtered by event)
 // @Security BearerAuth
-// @Description Получение списка всех опубликованных и активных домашних работ
+// @Description Получение списка всех опубликованных и активных домашних работ (с фильтрацией по event_id)
 // @Tags homeworks
 // @Produce json
+// @Param event_id query string false "ID события (UUID)"
 // @Success 200 {object} response.ApiResponse{data=[]homework_dto.HomeworkResponseDTO}
+// @Failure 400 {object} response.ApiResponse
 // @Failure 500 {object} response.ApiResponse
 // @Router /api/homeworks [get]
 func (h *HomeworkHandler) GetAvailableHomeworks(w http.ResponseWriter, r *http.Request) {
-	list, err := h.service.GetAvailableHomeworks(r.Context())
+	eventID := chi.URLParam(r, "event_id")
+	if eventID == "" {
+		eventID = r.URL.Query().Get("event_id")
+	}
+
+	list, err := h.service.GetAvailableHomeworks(r.Context(), eventID)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)
@@ -159,6 +166,38 @@ func (h *HomeworkHandler) GetAvailableHomeworks(w http.ResponseWriter, r *http.R
 	})
 }
 
+// @Summary Get homework with tasks and answer options
+// @Security BearerAuth
+// @Description Получение выбранной домашней работы со списком всех заданий и вариантов ответа
+// @Tags homeworks
+// @Produce json
+// @Param homework_id path string true "ID домашней работы (UUID)"
+// @Success 200 {object} response.ApiResponse{data=homework_dto.HomeworkDetailResponseDTO}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/homeworks/{homework_id} [get]
+func (h *HomeworkHandler) GetHomeworkByID(w http.ResponseWriter, r *http.Request) {
+	hwID := chi.URLParam(r, "homework_id")
+
+	res, err := h.service.GetHomeworkWithTasks(r.Context(), hwID)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       res,
+	})
+}
+
 // @Summary Submit homework
 // @Security BearerAuth
 // @Description Сдача домашней работы пользователем с автоматической проверкой ответов (повторная сдача запрещена)
@@ -174,7 +213,6 @@ func (h *HomeworkHandler) GetAvailableHomeworks(w http.ResponseWriter, r *http.R
 // @Router /api/homeworks/{homework_id}/submit [post]
 func (h *HomeworkHandler) SubmitHomework(w http.ResponseWriter, r *http.Request) {
 	hwID := chi.URLParam(r, "homework_id")
-	// userID извлекается из контекста авторизации или заголовка
 	userID := r.Header.Get("X-User-ID")
 
 	var dto homework_dto.SubmitHomeworkRequestDTO
@@ -216,6 +254,37 @@ func (h *HomeworkHandler) SubmitHomework(w http.ResponseWriter, r *http.Request)
 func (h *HomeworkHandler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
 	hwID := chi.URLParam(r, "homework_id")
 	stats, err := h.service.GetLeaderboard(r.Context(), hwID)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       stats,
+	})
+}
+
+// @Summary Get event leaderboard
+// @Security BearerAuth
+// @Description Получение суммарного рейтинга учеников по всем домашним работам события
+// @Tags homeworks
+// @Produce json
+// @Param event_id path string true "ID события (UUID)"
+// @Success 200 {object} response.ApiResponse{data=[]homework_dto.EventLeaderboardItemDTO}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/events/{event_id}/leaderboard [get]
+func (h *HomeworkHandler) GetEventLeaderboard(w http.ResponseWriter, r *http.Request) {
+	eventID := chi.URLParam(r, "event_id")
+	stats, err := h.service.GetEventLeaderboard(r.Context(), eventID)
 	if err != nil {
 		if apiErr, ok := errs.IsApiError(err); ok {
 			render.Status(r, apiErr.HttpCode)

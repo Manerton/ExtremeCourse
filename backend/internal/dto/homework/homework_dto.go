@@ -3,6 +3,7 @@ package homework_dto
 import "time"
 
 type CreateHomeworkRequestDTO struct {
+	EventID    string    `json:"event_id"`
 	Name       string    `json:"name"`
 	PublishAt  time.Time `json:"publish_at"`
 	DeadlineAt time.Time `json:"deadline_at"`
@@ -24,9 +25,36 @@ type AddTaskToHomeworkDTO struct {
 	TaskID string `json:"task_id"`
 }
 
-type SubmitAnswerItemDTO struct {
-	TaskID string `json:"task_id"`
+// Вариант ответа для отображения пользователю (без поля Correct)
+type TaskOptionResponseDTO struct {
+	ID     string `json:"id"`
 	Answer string `json:"answer"`
+}
+
+// Задача с вариантами ответа внутри ДЗ
+type HomeworkTaskResponseDTO struct {
+	ID          string                  `json:"id"`
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
+	MaxPoints   int                     `json:"max_points"`
+	Options     []TaskOptionResponseDTO `json:"options"`
+}
+
+// Полная информация о ДЗ со списком заданий для прохождения пользователем
+type HomeworkDetailResponseDTO struct {
+	ID         string                    `json:"id"`
+	EventID    string                    `json:"event_id"`
+	Name       string                    `json:"name"`
+	Status     int                       `json:"status"`
+	PublishAt  time.Time                 `json:"publish_at"`
+	DeadlineAt time.Time                 `json:"deadline_at"`
+	Tasks      []HomeworkTaskResponseDTO `json:"tasks"`
+}
+
+type SubmitAnswerItemDTO struct {
+	TaskID   string `json:"task_id"`
+	AnswerID string `json:"answer_id,omitempty"` // Позволяет отправить ID выбранного варианта
+	Answer   string `json:"answer,omitempty"`    // Позволяет отправить текстовый ответ
 }
 
 type SubmitHomeworkRequestDTO struct {
@@ -35,6 +63,7 @@ type SubmitHomeworkRequestDTO struct {
 
 type HomeworkResponseDTO struct {
 	ID         string    `json:"id"`
+	EventID    string    `json:"event_id"`
 	Name       string    `json:"name"`
 	Status     int       `json:"status"`
 	PublishAt  time.Time `json:"publish_at"`

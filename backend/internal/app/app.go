@@ -12,6 +12,7 @@ import (
 	"main/internal/handlers/district_handler"
 	"main/internal/handlers/event_handler"
 	"main/internal/handlers/file_handler"
+	"main/internal/handlers/homework_handler"
 	"main/internal/handlers/link_handler"
 	"main/internal/handlers/participant_handler"
 	"main/internal/handlers/portfolio_handler"
@@ -25,6 +26,7 @@ import (
 	"main/internal/repositories/application_repository"
 	"main/internal/repositories/district_repository"
 	"main/internal/repositories/event_repository"
+	"main/internal/repositories/homework_repository"
 	"main/internal/repositories/participant_repository"
 	"main/internal/repositories/portfolio_repository"
 	"main/internal/repositories/refresh_repository"
@@ -35,6 +37,7 @@ import (
 	"main/internal/services/district_service"
 	"main/internal/services/event_service"
 	"main/internal/services/excel_service"
+	"main/internal/services/homework_service"
 	"main/internal/services/links_service"
 	"main/internal/services/participant_service"
 	"main/internal/services/portfolio_service"
@@ -99,6 +102,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	eventReposotory := &event_repository.EventRepository{}
 	applicationRepository := &application_repository.ApplicationRepository{}
 	portfolioRepository := &portfolio_repository.PortfolioRepository{}
+	homeworkRepository := &homework_repository.HomeworkRepository{}
 
 	// init notify client
 	zvonokClient := zvonok_client.NewZvonokClient(cfg.ZvonokConfig)
@@ -113,6 +117,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	eventService := event_service.New(log, gormORM, eventReposotory, applicationRepository, participantRepository)
 	applicationService := application_service.NewApplicationService(log, gormORM, applicationRepository, participantRepository, schoolRepository, eventReposotory, portfolioRepository)
 	portfolioService := portfolio_service.New(log, gormORM, portfolioRepository, diskStore)
+	homeworkService := homework_service.New(log, gormORM, homeworkRepository, userRepository)
 
 	excelService := excel_service.NewExcelService(log)
 
@@ -127,6 +132,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	applicationHandler := application_handler.NewApplicationHandler(applicationService, excelService, log)
 	portfolioHandler := portfolio_handler.New(portfolioService)
 	fileHandler := file_handler.NewFileHandler(diskStore)
+	homeworkHandler := homework_handler.New(homeworkService)
 
 	// init router
 	router := chi.NewRouter()
@@ -149,6 +155,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 		eventHandler,
 		portfolioHandler,
 		fileHandler,
+		homeworkHandler,
 	)
 
 	// init server
@@ -171,7 +178,8 @@ func (a *App) initRoutes(router *chi.Mux,
 	applicationHandler *application_handler.ApplicationHandler,
 	eventHandler *event_handler.EventHandler,
 	portfolioHandler *portfolio_handler.PortfolioHandler,
-	fileHandler *file_handler.FileHandler) {
+	fileHandler *file_handler.FileHandler,
+	hwHandler *homework_handler.HomeworkHandler) {
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
 
@@ -278,6 +286,28 @@ func (a *App) initRoutes(router *chi.Mux,
 		r.Route("/api/events", func(events chi.Router) {
 			events.Get("/", eventHandler.GetAllOpen)
 			events.Post("/{id}/apply", eventHandler.ApplyToEvent)
+		})
+
+		r.Route("/api", func(r chi.Router) {
+			// Выбор списка доступных ДЗ по событию (или через GET /api/homeworks?event_id=...)
+			r.Get("/events/{event_id}/homeworks", hwHandler.GetAvailableHomeworks)
+			r.Get("/events/{event_id}/leaderboard", hwHandler.GetEventLeaderboard)
+
+			r.Post("/tasks", hwHandler.CreateTask)
+
+			r.Route("/homeworks", func(r chi.Router) {
+				r.Post("/", hwHandler.CreateHomework)
+				r.Get("/", hwHandler.GetAvailableHomeworks)
+
+				// Получение выбранного ДЗ со списком задач и вариантов ответа
+				r.Get("/{homework_id}", hwHandler.GetHomeworkByID)
+
+				r.Post("/{homework_id}/tasks", hwHandler.AddTaskToHomework)
+
+				// Отправка заполненного ДЗ со множеством задач
+				r.Post("/{homework_id}/submit", hwHandler.SubmitHomework)
+				r.Get("/{homework_id}/leaderboard", hwHandler.GetLeaderboard)
+			})
 		})
 	})
 }

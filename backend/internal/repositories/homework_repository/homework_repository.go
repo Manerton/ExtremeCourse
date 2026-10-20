@@ -58,9 +58,19 @@ func (r *HomeworkRepository) AddTaskToHomework(ctx context.Context, o orm.ORM, h
 func (r *HomeworkRepository) GetAvailableHomeworks(ctx context.Context, o orm.ORM, now time.Time) ([]homework_model.Homework, error) {
 	const op = "repositories.HomeworkRepository.GetAvailableHomeworks"
 	var hwList []homework_model.Homework
-	// Условие: статус опубликован, время публикации уже наступило, а дедлайн еще не прошел
 	cond := "status = ? AND publish_at <= ? AND deadline_at >= ?"
 	err := o.Find(ctx, homework_model.Homework{}, nil, nil, nil, nil, nil, &hwList, cond, homework_model.HomeworkStatusPublished, now, now)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return hwList, nil
+}
+
+func (r *HomeworkRepository) GetAvailableHomeworksByEvent(ctx context.Context, o orm.ORM, eventID uuid.UUID, now time.Time) ([]homework_model.Homework, error) {
+	const op = "repositories.HomeworkRepository.GetAvailableHomeworksByEvent"
+	var hwList []homework_model.Homework
+	cond := "event_id = ? AND status = ? AND publish_at <= ? AND deadline_at >= ?"
+	err := o.Find(ctx, homework_model.Homework{}, nil, nil, nil, nil, nil, &hwList, cond, eventID, homework_model.HomeworkStatusPublished, now, now)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -85,13 +95,18 @@ func (r *HomeworkRepository) GetHomeworkTasks(ctx context.Context, o orm.ORM, hw
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	tasks := make([]task_model.Task, 0, len(hwTasks))
+	if len(hwTasks) == 0 {
+		return []task_model.Task{}, nil
+	}
+
+	taskIDs := make([]uuid.UUID, 0, len(hwTasks))
 	for _, ht := range hwTasks {
-		var t task_model.Task
-		if err := o.First(ctx, task_model.Task{}, nil, &t, task_model.Task{ID: ht.TaskID}); err != nil {
-			return nil, fmt.Errorf("%s: %w", op, err)
-		}
-		tasks = append(tasks, t)
+		taskIDs = append(taskIDs, ht.TaskID)
+	}
+
+	var tasks []task_model.Task
+	if err := o.Find(ctx, task_model.Task{}, nil, nil, nil, nil, nil, &tasks, "id IN ?", taskIDs); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return tasks, nil
 }
@@ -100,6 +115,19 @@ func (r *HomeworkRepository) GetTaskAnswers(ctx context.Context, o orm.ORM, task
 	const op = "repositories.HomeworkRepository.GetTaskAnswers"
 	var answers []answer_model.TaskAnswer
 	err := o.Find(ctx, answer_model.TaskAnswer{}, nil, nil, nil, nil, nil, &answers, answer_model.TaskAnswer{TaskId: taskID})
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return answers, nil
+}
+
+func (r *HomeworkRepository) GetTaskAnswersByTaskIDs(ctx context.Context, o orm.ORM, taskIDs []uuid.UUID) ([]answer_model.TaskAnswer, error) {
+	const op = "repositories.HomeworkRepository.GetTaskAnswersByTaskIDs"
+	if len(taskIDs) == 0 {
+		return []answer_model.TaskAnswer{}, nil
+	}
+	var answers []answer_model.TaskAnswer
+	err := o.Find(ctx, answer_model.TaskAnswer{}, nil, nil, nil, nil, nil, &answers, "task_id IN ?", taskIDs)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -154,7 +182,6 @@ type EventUserScoreRow struct {
 func (r *HomeworkRepository) GetEventLeaderboard(ctx context.Context, o orm.ORM, eventID uuid.UUID) ([]EventUserScoreRow, error) {
 	const op = "repositories.HomeworkRepository.GetEventLeaderboard"
 
-	// 1. Находим все ID домашних работ, привязанных к данному курсу (event)
 	var homeworks []homework_model.Homework
 	fields := []string{"id"}
 	err := o.Find(ctx, homework_model.Homework{}, nil, &fields, nil, nil, nil, &homeworks, "event_id = ?", eventID)
@@ -171,14 +198,12 @@ func (r *HomeworkRepository) GetEventLeaderboard(ctx context.Context, o orm.ORM,
 		hwIDs = append(hwIDs, hw.ID)
 	}
 
-	// 2. Получаем все сдачи по найденным ДЗ
 	var submissions []submission_model.HomeworkSubmission
 	err = o.Find(ctx, submission_model.HomeworkSubmission{}, nil, nil, nil, nil, nil, &submissions, "homework_id IN ?", hwIDs)
 	if err != nil {
 		return nil, fmt.Errorf("%s: find submissions: %w", op, err)
 	}
 
-	// 3. Агрегируем суммарные баллы каждого пользователя
 	scoreMap := make(map[uuid.UUID]int)
 	for _, sub := range submissions {
 		scoreMap[sub.UserID] += sub.TotalScore

@@ -831,6 +831,119 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/events/all": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение всех событий",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Get events",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/event_dto.EventResponseDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/events/{event_id}/leaderboard": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение суммарного рейтинга учеников по всем домашним работам события",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Get event leaderboard",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID события (UUID)",
+                        "name": "event_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/homework_dto.EventLeaderboardItemDTO"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/events/{id}/apply": {
             "post": {
                 "security": [
@@ -964,11 +1077,6 @@ const docTemplate = `{
         },
         "/api/files/download": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Скачивает файл из файлового хранилища по переданному относительному или полному пути",
                 "produces": [
                     "application/octet-stream"
@@ -1028,14 +1136,22 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получение списка всех опубликованных и активных домашних работ",
+                "description": "Получение списка всех опубликованных и активных домашних работ (с фильтрацией по event_id)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "homeworks"
                 ],
-                "summary": "Get available homeworks",
+                "summary": "Get available homeworks (optionally filtered by event)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID события (UUID)",
+                        "name": "event_id",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1058,6 +1174,12 @@ const docTemplate = `{
                             ]
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1072,7 +1194,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создание новой домашней работы с указанием сроков публикации и дедлайна",
+                "description": "Создание новой домашней работы с привязкой к событию и указанием сроков",
                 "consumes": [
                     "application/json"
                 ],
@@ -1110,6 +1232,64 @@ const docTemplate = `{
                                             "additionalProperties": {
                                                 "type": "string"
                                             }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/homeworks/{homework_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение выбранной домашней работы со списком всех заданий и вариантов ответа",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Get homework with tasks and answer options",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID домашней работы (UUID)",
+                        "name": "homework_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/homework_dto.HomeworkDetailResponseDTO"
                                         }
                                     }
                                 }
@@ -3429,6 +3609,9 @@ const docTemplate = `{
                 "deadline_at": {
                     "type": "string"
                 },
+                "event_id": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -3457,10 +3640,30 @@ const docTemplate = `{
                 }
             }
         },
-        "homework_dto.HomeworkResponseDTO": {
+        "homework_dto.EventLeaderboardItemDTO": {
+            "type": "object",
+            "properties": {
+                "rank": {
+                    "type": "integer"
+                },
+                "total_score": {
+                    "type": "integer"
+                },
+                "user_fio": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "homework_dto.HomeworkDetailResponseDTO": {
             "type": "object",
             "properties": {
                 "deadline_at": {
+                    "type": "string"
+                },
+                "event_id": {
                     "type": "string"
                 },
                 "id": {
@@ -3474,6 +3677,58 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "integer"
+                },
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/homework_dto.HomeworkTaskResponseDTO"
+                    }
+                }
+            }
+        },
+        "homework_dto.HomeworkResponseDTO": {
+            "type": "object",
+            "properties": {
+                "deadline_at": {
+                    "type": "string"
+                },
+                "event_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "publish_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                }
+            }
+        },
+        "homework_dto.HomeworkTaskResponseDTO": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "max_points": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/homework_dto.TaskOptionResponseDTO"
+                    }
                 }
             }
         },
@@ -3521,6 +3776,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "answer": {
+                    "description": "Позволяет отправить текстовый ответ",
+                    "type": "string"
+                },
+                "answer_id": {
+                    "description": "Позволяет отправить ID выбранного варианта",
                     "type": "string"
                 },
                 "task_id": {
@@ -3547,6 +3807,17 @@ const docTemplate = `{
                 },
                 "correct": {
                     "type": "boolean"
+                }
+            }
+        },
+        "homework_dto.TaskOptionResponseDTO": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
                 }
             }
         },

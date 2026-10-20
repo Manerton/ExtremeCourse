@@ -64,6 +64,8 @@ definitions:
     properties:
       deadline_at:
         type: string
+      event_id:
+        type: string
       name:
         type: string
       publish_at:
@@ -82,9 +84,22 @@ definitions:
       name:
         type: string
     type: object
-  homework_dto.HomeworkResponseDTO:
+  homework_dto.EventLeaderboardItemDTO:
+    properties:
+      rank:
+        type: integer
+      total_score:
+        type: integer
+      user_fio:
+        type: string
+      user_id:
+        type: string
+    type: object
+  homework_dto.HomeworkDetailResponseDTO:
     properties:
       deadline_at:
+        type: string
+      event_id:
         type: string
       id:
         type: string
@@ -94,6 +109,40 @@ definitions:
         type: string
       status:
         type: integer
+      tasks:
+        items:
+          $ref: '#/definitions/homework_dto.HomeworkTaskResponseDTO'
+        type: array
+    type: object
+  homework_dto.HomeworkResponseDTO:
+    properties:
+      deadline_at:
+        type: string
+      event_id:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      publish_at:
+        type: string
+      status:
+        type: integer
+    type: object
+  homework_dto.HomeworkTaskResponseDTO:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      max_points:
+        type: integer
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/homework_dto.TaskOptionResponseDTO'
+        type: array
     type: object
   homework_dto.StudentHomeworkLeaderboardDTO:
     properties:
@@ -124,6 +173,10 @@ definitions:
   homework_dto.SubmitAnswerItemDTO:
     properties:
       answer:
+        description: Позволяет отправить текстовый ответ
+        type: string
+      answer_id:
+        description: Позволяет отправить ID выбранного варианта
         type: string
       task_id:
         type: string
@@ -141,6 +194,13 @@ definitions:
         type: string
       correct:
         type: boolean
+    type: object
+  homework_dto.TaskOptionResponseDTO:
+    properties:
+      answer:
+        type: string
+      id:
+        type: string
     type: object
   homework_dto.TaskResultResponseDTO:
     properties:
@@ -993,6 +1053,43 @@ paths:
       summary: Create event
       tags:
       - events
+  /api/events/{event_id}/leaderboard:
+    get:
+      description: Получение суммарного рейтинга учеников по всем домашним работам
+        события
+      parameters:
+      - description: ID события (UUID)
+        in: path
+        name: event_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/homework_dto.EventLeaderboardItemDTO'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get event leaderboard
+      tags:
+      - homeworks
   /api/events/{id}/apply:
     post:
       consumes:
@@ -1074,6 +1171,36 @@ paths:
       summary: Update event status
       tags:
       - events
+  /api/events/all:
+    get:
+      description: Получение всех событий
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/event_dto.EventResponseDTO'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get events
+      tags:
+      - events
   /api/files/download:
     get:
       description: Скачивает файл из файлового хранилища по переданному относительному
@@ -1108,14 +1235,18 @@ paths:
           description: Внутренняя ошибка сервера
           schema:
             $ref: '#/definitions/response.ApiResponse'
-      security:
-      - BearerAuth: []
       summary: Скачивание файла
       tags:
       - files
   /api/homeworks:
     get:
       description: Получение списка всех опубликованных и активных домашних работ
+        (с фильтрацией по event_id)
+      parameters:
+      - description: ID события (UUID)
+        in: query
+        name: event_id
+        type: string
       produces:
       - application/json
       responses:
@@ -1130,20 +1261,24 @@ paths:
                     $ref: '#/definitions/homework_dto.HomeworkResponseDTO'
                   type: array
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ApiResponse'
       security:
       - BearerAuth: []
-      summary: Get available homeworks
+      summary: Get available homeworks (optionally filtered by event)
       tags:
       - homeworks
     post:
       consumes:
       - application/json
-      description: Создание новой домашней работы с указанием сроков публикации и
-        дедлайна
+      description: Создание новой домашней работы с привязкой к событию и указанием
+        сроков
       parameters:
       - description: Данные для создания домашней работы
         in: body
@@ -1176,6 +1311,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Create homework
+      tags:
+      - homeworks
+  /api/homeworks/{homework_id}:
+    get:
+      description: Получение выбранной домашней работы со списком всех заданий и вариантов
+        ответа
+      parameters:
+      - description: ID домашней работы (UUID)
+        in: path
+        name: homework_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/homework_dto.HomeworkDetailResponseDTO'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get homework with tasks and answer options
       tags:
       - homeworks
   /api/homeworks/{homework_id}/leaderboard:
