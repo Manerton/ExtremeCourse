@@ -87,6 +87,16 @@ func (r *HomeworkRepository) GetHomeworkByID(ctx context.Context, o orm.ORM, id 
 	return hw, nil
 }
 
+func (r *HomeworkRepository) GetSubmissionTaskResults(ctx context.Context, o orm.ORM, submissionID uuid.UUID) ([]submission_model.SubmissionTaskResult, error) {
+	const op = "repositories.HomeworkRepository.GetSubmissionTaskResults"
+	var results []submission_model.SubmissionTaskResult
+	err := o.Find(ctx, submission_model.SubmissionTaskResult{}, nil, nil, nil, nil, nil, &results, "submission_id = ?", submissionID)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return results, nil
+}
+
 func (r *HomeworkRepository) GetHomeworkTasks(ctx context.Context, o orm.ORM, hwID uuid.UUID) ([]task_model.Task, error) {
 	const op = "repositories.HomeworkRepository.GetHomeworkTasks"
 	var hwTasks []homework_task_model.HomeworkTask

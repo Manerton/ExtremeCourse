@@ -1372,6 +1372,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/homeworks/{homework_id}/my-submission": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получение набранных баллов и результатов проверки ДЗ для текущего пользователя",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "homeworks"
+                ],
+                "summary": "Get user's own homework submission and score",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID домашней работы (UUID)",
+                        "name": "homework_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID пользователя (UUID)",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/homework_dto.SubmissionResponseDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/homeworks/{homework_id}/submit": {
             "post": {
                 "security": [
@@ -3723,12 +3793,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/homework_dto.TaskOptionResponseDTO"
-                    }
                 }
             }
         },
@@ -3779,10 +3843,6 @@ const docTemplate = `{
                     "description": "Позволяет отправить текстовый ответ",
                     "type": "string"
                 },
-                "answer_id": {
-                    "description": "Позволяет отправить ID выбранного варианта",
-                    "type": "string"
-                },
                 "task_id": {
                     "type": "string"
                 }
@@ -3807,17 +3867,6 @@ const docTemplate = `{
                 },
                 "correct": {
                     "type": "boolean"
-                }
-            }
-        },
-        "homework_dto.TaskOptionResponseDTO": {
-            "type": "object",
-            "properties": {
-                "answer": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
                 }
             }
         },

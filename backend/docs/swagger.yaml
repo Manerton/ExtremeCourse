@@ -139,10 +139,6 @@ definitions:
         type: integer
       name:
         type: string
-      options:
-        items:
-          $ref: '#/definitions/homework_dto.TaskOptionResponseDTO'
-        type: array
     type: object
   homework_dto.StudentHomeworkLeaderboardDTO:
     properties:
@@ -175,9 +171,6 @@ definitions:
       answer:
         description: Позволяет отправить текстовый ответ
         type: string
-      answer_id:
-        description: Позволяет отправить ID выбранного варианта
-        type: string
       task_id:
         type: string
     type: object
@@ -194,13 +187,6 @@ definitions:
         type: string
       correct:
         type: boolean
-    type: object
-  homework_dto.TaskOptionResponseDTO:
-    properties:
-      answer:
-        type: string
-      id:
-        type: string
     type: object
   homework_dto.TaskResultResponseDTO:
     properties:
@@ -1382,6 +1368,49 @@ paths:
       security:
       - BearerAuth: []
       summary: Get homework leaderboard
+      tags:
+      - homeworks
+  /api/homeworks/{homework_id}/my-submission:
+    get:
+      description: Получение набранных баллов и результатов проверки ДЗ для текущего
+        пользователя
+      parameters:
+      - description: ID домашней работы (UUID)
+        in: path
+        name: homework_id
+        required: true
+        type: string
+      - description: ID пользователя (UUID)
+        in: header
+        name: X-User-ID
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/homework_dto.SubmissionResponseDTO'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user's own homework submission and score
       tags:
       - homeworks
   /api/homeworks/{homework_id}/submit:

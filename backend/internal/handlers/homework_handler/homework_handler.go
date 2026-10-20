@@ -241,6 +241,41 @@ func (h *HomeworkHandler) SubmitHomework(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// @Summary Get user's own homework submission and score
+// @Security BearerAuth
+// @Description Получение набранных баллов и результатов проверки ДЗ для текущего пользователя
+// @Tags homeworks
+// @Produce json
+// @Param homework_id path string true "ID домашней работы (UUID)"
+// @Param X-User-ID header string false "ID пользователя (UUID)"
+// @Success 200 {object} response.ApiResponse{data=homework_dto.SubmissionResponseDTO}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 404 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/homeworks/{homework_id}/my-submission [get]
+func (h *HomeworkHandler) GetMySubmission(w http.ResponseWriter, r *http.Request) {
+	hwID := chi.URLParam(r, "homework_id")
+	userID := r.Header.Get("X-User-ID") // Или из контекста JWT-авторизации
+
+	res, err := h.service.GetMySubmission(r.Context(), hwID, userID)
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       res,
+	})
+}
+
 // @Summary Get homework leaderboard
 // @Security BearerAuth
 // @Description Получение рейтинга учеников по конкретной домашней работе

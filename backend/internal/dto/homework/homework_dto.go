@@ -33,11 +33,11 @@ type TaskOptionResponseDTO struct {
 
 // Задача с вариантами ответа внутри ДЗ
 type HomeworkTaskResponseDTO struct {
-	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
-	Description string                  `json:"description"`
-	MaxPoints   int                     `json:"max_points"`
-	Options     []TaskOptionResponseDTO `json:"options"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	MaxPoints   int    `json:"max_points"`
+	// Options     []TaskOptionResponseDTO `json:"options"`
 }
 
 // Полная информация о ДЗ со списком заданий для прохождения пользователем
@@ -52,9 +52,8 @@ type HomeworkDetailResponseDTO struct {
 }
 
 type SubmitAnswerItemDTO struct {
-	TaskID   string `json:"task_id"`
-	AnswerID string `json:"answer_id,omitempty"` // Позволяет отправить ID выбранного варианта
-	Answer   string `json:"answer,omitempty"`    // Позволяет отправить текстовый ответ
+	TaskID string `json:"task_id"`
+	Answer string `json:"answer,omitempty"` // Позволяет отправить текстовый ответ
 }
 
 type SubmitHomeworkRequestDTO struct {

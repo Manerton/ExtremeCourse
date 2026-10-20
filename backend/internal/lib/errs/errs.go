@@ -33,6 +33,7 @@ var (
 	ErrInternalError = &ApiError{Code: "INTERNAL_SERVER_ERROR", HttpCode: http.StatusInternalServerError, Message: "Something was wrong"}
 	ErrBadRequest    = &ApiError{Code: "BAD_REQUEST", HttpCode: http.StatusBadRequest, Message: "Invalid data"}
 	ErrAccessDenied  = &ApiError{Code: "ACCESS_DENIED", HttpCode: http.StatusMethodNotAllowed, Message: "Access denied"}
+	ErrNotFound      = &ApiError{Code: "NOT_FOUND", HttpCode: http.StatusNotFound, Message: "Not found"}
 )
 
 // Token errors

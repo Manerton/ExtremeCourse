@@ -296,7 +296,12 @@ func (a *App) initRoutes(router *chi.Mux,
 			r.Post("/tasks", hwHandler.CreateTask)
 
 			r.Route("/homeworks", func(r chi.Router) {
-				r.Post("/", hwHandler.CreateHomework)
+
+				r.With(base_access.RoleBasedAccess([]int{user.ADMIN, user.ORGANIZER})).Group(func(r chi.Router) {
+					r.Post("/", hwHandler.CreateHomework)
+					r.Get("/{homework_id}/my-submission", hwHandler.GetMySubmission)
+				})
+
 				r.Get("/", hwHandler.GetAvailableHomeworks)
 
 				// Получение выбранного ДЗ со списком задач и вариантов ответа
@@ -309,6 +314,7 @@ func (a *App) initRoutes(router *chi.Mux,
 				r.Get("/{homework_id}/leaderboard", hwHandler.GetLeaderboard)
 			})
 		})
+
 	})
 }
 
