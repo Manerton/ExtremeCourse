@@ -290,28 +290,27 @@ func (a *App) initRoutes(router *chi.Mux,
 
 		r.Route("/api", func(r chi.Router) {
 			// Выбор списка доступных ДЗ по событию (или через GET /api/homeworks?event_id=...)
+			// Если этот код уже внутри r.Route("/api", ...), внешнюю обёртку "/api" убери!
 			r.Get("/events/{event_id}/homeworks", hwHandler.GetAvailableHomeworks)
 			r.Get("/events/{event_id}/leaderboard", hwHandler.GetEventLeaderboard)
 
-			r.Post("/tasks", hwHandler.CreateTask)
+			// Создание задач — только для админов и организаторов
+			r.With(base_access.RoleBasedAccess([]int{user.ADMIN, user.ORGANIZER})).
+				Post("/tasks", hwHandler.CreateTask)
 
 			r.Route("/homeworks", func(r chi.Router) {
+				// Публичные/ученические эндпоинты (доступны всем авторизованным пользователям)
+				r.Get("/", hwHandler.GetAvailableHomeworks)
+				r.Get("/{homework_id}", hwHandler.GetHomeworkByID)
+				r.Post("/{homework_id}/submit", hwHandler.SubmitHomework)
+				r.Get("/{homework_id}/my-submission", hwHandler.GetMySubmission)
 
+				// Эндпоинты только для ADMIN и ORGANIZER
 				r.With(base_access.RoleBasedAccess([]int{user.ADMIN, user.ORGANIZER})).Group(func(r chi.Router) {
 					r.Post("/", hwHandler.CreateHomework)
-					r.Get("/{homework_id}/my-submission", hwHandler.GetMySubmission)
+					r.Post("/{homework_id}/tasks", hwHandler.AddTaskToHomework)
+					r.Get("/{homework_id}/leaderboard", hwHandler.GetLeaderboard)
 				})
-
-				r.Get("/", hwHandler.GetAvailableHomeworks)
-
-				// Получение выбранного ДЗ со списком задач и вариантов ответа
-				r.Get("/{homework_id}", hwHandler.GetHomeworkByID)
-
-				r.Post("/{homework_id}/tasks", hwHandler.AddTaskToHomework)
-
-				// Отправка заполненного ДЗ со множеством задач
-				r.Post("/{homework_id}/submit", hwHandler.SubmitHomework)
-				r.Get("/{homework_id}/leaderboard", hwHandler.GetLeaderboard)
 			})
 		})
 
@@ -328,6 +327,7 @@ func (a *App) initCors(router *chi.Mux, cfg config.AdditionalAddressesConfig) {
 			"Content-Type",
 			"X-CSRF-Token",
 			"X-Requested-With",
+			"X-User-ID",
 		},
 		ExposedHeaders: []string{
 			"Link",
