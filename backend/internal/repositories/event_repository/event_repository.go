@@ -58,6 +58,16 @@ func (r *EventRepository) GetAllOpen(ctx context.Context, o orm.ORM, offset, lim
 	return events, nil
 }
 
+func (r *EventRepository) GetAll(ctx context.Context, o orm.ORM, offset, limit *int) ([]event_model.Event, error) {
+	const op = "repositories.EventRepository.GetAllOpen"
+	var events []event_model.Event
+	err := o.Find(ctx, event_model.Event{}, nil, nil, offset, limit, nil, &events)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return events, nil
+}
+
 func (r *EventRepository) UpdateStatus(ctx context.Context, o orm.ORM, id uuid.UUID, status int) error {
 	const op = "repositories.EventRepository.UpdateStatus"
 	err := o.Updates(ctx, event_model.Event{ID: id}, event_model.Event{Status: status})

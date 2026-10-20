@@ -16,6 +16,9 @@ export interface MyEvent {
     events?: MyEvent[];
 }
 
+
+
+
 export interface MainEvent {
     id: string
     name: string
@@ -46,6 +49,10 @@ export interface Event {
     subject: string
     class: number
     status: number
+}
+
+export interface UpdateStatusEventDTORequest {
+    status: number;
 }
 
 export interface CreateEventDTORequest {

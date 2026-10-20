@@ -97,6 +97,35 @@ func (h *EventHandler) GetAllOpen(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @Summary Get events
+// @Security BearerAuth
+// @Description Получение всех событий
+// @Tags events
+// @Produce json
+// @Success 200 {object} response.ApiResponse{data=[]event_dto.EventResponseDTO}
+// @Failure 400 {object} response.ApiResponse
+// @Failure 500 {object} response.ApiResponse
+// @Router /api/events/all [get]
+func (h *EventHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	list, err := h.service.GetAll(r.Context())
+	if err != nil {
+		if apiErr, ok := errs.IsApiError(err); ok {
+			render.Status(r, apiErr.HttpCode)
+			render.JSON(w, r, response.ErrorApiResponse(apiErr))
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, response.ErrorApiResponse(errs.ErrInternalError))
+		return
+	}
+
+	render.JSON(w, r, response.ApiResponse{
+		Status:     response.SUCCESS,
+		StatusCode: http.StatusOK,
+		Data:       list,
+	})
+}
+
 // @Summary Update event status
 // @Security BearerAuth
 // @Description Изменение статуса события (открыть/закрыть регистрацию)

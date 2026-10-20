@@ -1,6 +1,6 @@
 import axios from "axios";
 import { API_CONFIG } from "../config/api";
-import { CreateEventDTORequest, MyEvent, UpdateEventDTORequest } from "../components/types/event";
+import { CreateEventDTORequest, MyEvent, UpdateEventDTORequest ,UpdateStatusEventDTORequest} from "../components/types/event";
 
 
 export async function fetchRegionalStages(token: string) {
@@ -83,10 +83,14 @@ export async function fetchSimpleOlympiads(token: string) {
 
 }
 
-export async function axiosGetAllOlympiads() {
+export async function axiosGetAllOlympiads(token: string) {
   let url = `${API_CONFIG.ALLEVENTS}`;
   const res = await axios.get(url, {
     withCredentials: true,
+    headers: {
+      Authorization: `Bearer ${token}` // добавляем токен
+    }
+    
   });
 
   return res.data;
@@ -135,12 +139,31 @@ export async function axiosUpdateEvent(token: string, event: MyEvent) {
 
 }
 
-export async function axiosStatusUpdate(token: string,
+
+
+export async function axiosUpdate(token: string,
     eventId: string,
     payload: UpdateEventDTORequest
 ) {
     return axios.put(
         `${API_CONFIG.EVENT}${eventId}`,
+        payload,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        }
+    );
+}
+
+export async function axiosStatusUpdate(
+    token: string,
+    eventId: string,
+    payload: UpdateStatusEventDTORequest
+) {
+    // Используем patch и добавляем /status (если в API_CONFIG.EVENT лежит "/api/events/")
+    return axios.patch(
+        `${API_CONFIG.EVENT}${eventId}/status`,
         payload,
         {
             headers: {

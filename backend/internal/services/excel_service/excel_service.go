@@ -112,8 +112,10 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 		"Класс участия",
 		"ФИО участника",
 		"Email",
-		"Телефон",
+		"Телефон участника",
 		"Класс уч-ка",
+		"ФИО родителя",
+		"Телефон родителя",
 		"Дата рождения",
 		"Мероприятие",
 		"Предмет",
@@ -181,6 +183,8 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 			app.User.Email,
 			app.User.PhoneNumber,
 			app.User.Class,
+			app.User.ParentFIO,
+			app.User.ParentNumber,
 			birthDateStr,
 			app.Event.Name,
 			app.Event.Subject,
@@ -231,10 +235,12 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 		"J": 20, // Предмет
 		"K": 35, // Школа
 		"L": 22, // Район
-		"M": 16, // Балл
-		"N": 45, // Код достижения
+		"M": 45, // Балл
+		"N": 20, // Код достижения
 		"O": 20, // Дата подачи
-		"P": 18, // Портфолио (файл)
+		"P": 45, // Портфолио (файл)
+		"Q": 18,
+		"R": 20,
 	}
 	for col, width := range colWidths {
 		_ = f.SetColWidth(sheetName, col, col, width)

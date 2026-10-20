@@ -2,7 +2,7 @@ const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const API_CONFIG = {
     REGISTEREVENTS: `${API_URL}/events`,
-    ALLEVENTS: `${API_URL}/events/`,
+    ALLEVENTS: `${API_URL}/events/all`,
     EVENT: `${API_URL}/events/`,
     EXCELUPLOAD: `${API_URL}/upload-excel-event`,
     CHILD: `${API_URL}/events/child`,

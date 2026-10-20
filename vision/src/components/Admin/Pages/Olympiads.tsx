@@ -1,135 +1,118 @@
-import { useEffect, useState } from "react";
-import { Table, Button, Spinner, Alert } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
+import { Table, Button, Spinner, Alert, Badge } from "react-bootstrap";
 import { useAuth } from "../../Helpers/AuthContext";
-import { MyEvent, UpdateEventDTORequest } from "../../types/event";
-import { axiosGetAllOlympiads, axiosStatusUpdate, axiosUpdateEvent } from "../../../requests/EventsRequests";
-import { axiosCreateApplication, axiosGenerateCode } from "../../../requests/ApplicationRequests";
-import { Application } from "../../types/application";
-import { EventStatus, GetEventStatusLabel } from "../../../dictionary/eventStatus";
+import { Event, UpdateStatusEventDTORequest } from "../../types/event";
+import { axiosGetAllOlympiads, axiosStatusUpdate } from "../../../requests/EventsRequests";
 
-
+// Константы статусов согласно бэкенду (1 = Closed, 2 = Open)
+const STATUS_CLOSED = 1;
+const STATUS_OPEN = 2;
 
 const OlympiadsAdminTable: React.FC = () => {
-    const { user, accessToken } = useAuth();
+    const { accessToken } = useAuth();
 
-    const [olympiads, setOlympiads] = useState<MyEvent[]>([]);
+    const [olympiads, setOlympiads] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    const [statuses, setStatuses] = useState<Record<string, number>>({});
-
-
-    const [selectedClasses, setSelectedClasses] = useState<Record<string, number>>({});
-    const [selectedProfiles, setSelectedProfiles] = useState<Record<string, string>>({});
-
+    const [updatingId, setUpdatingId] = useState<string | null>(null);
 
     useEffect(() => {
-        axiosGetAllOlympiads()
-            .then((res) => {
-                setOlympiads(res.data)
+        if (!accessToken) {
+            setLoading(false);
+            return;
+        }
 
-                const map: Record<string, number> = {}
-                res.data.forEach((o: MyEvent) => {
-                    map[o.id!] = o.status
-                })
-                setStatuses(map)
+        axiosGetAllOlympiads(accessToken)
+            .then((res) => {
+                // Если бэкенд оборачивает массив в поле data (например, res.data.data), 
+                // скорректируйте эту строчку при необходимости
+                setOlympiads(res.data);
             })
             .catch((err) => setError((err as Error).message))
             .finally(() => setLoading(false));
-    }, []);
+    }, [accessToken]);
 
+    const handleUpdateStatus = async (eventId: string, newStatus: number) => {
+        if (!accessToken) return;
 
-
-  const handleUpdateStatusSubmit = async (olymp: MyEvent) => {
-    try {
-        const payload: UpdateEventDTORequest = {
-            status: statuses[olymp.id!],
-        };
-
-        await axiosStatusUpdate(accessToken!, olymp.id!, payload);
-
-        alert("Статус изменён!");
-    } catch {
-        alert("Ошибка при смене статуса");
-    }
-};
-
-
-
-    const handleCreateParticipantCode = async (eventId: string) => {
         try {
-            await axiosGenerateCode(accessToken!, eventId)
-            alert("Коды сгенерированны")
+            setUpdatingId(eventId);
+            const payload: UpdateStatusEventDTORequest = {
+                status: newStatus,
+            };
+
+            await axiosStatusUpdate(accessToken, eventId, payload);
+
+            // Обновляем состояние локально, чтобы интерфейс сразу отобразил изменения
+            setOlympiads((prev) =>
+                prev.map((item) =>
+                    item.id === eventId ? { ...item, status: newStatus } : item
+                )
+            );
         } catch (e) {
-            alert("Ошибка при генерации кодов")
+            alert("Ошибка при смене статуса");
+        } finally {
+            setUpdatingId(null);
         }
-    }
+    };
 
+    const renderStatusBadge = (status: number) => {
+        switch (status) {
+            case STATUS_OPEN:
+                return <Badge bg="success">Открыто</Badge>;
+            case STATUS_CLOSED:
+                return <Badge bg="secondary">Закрыто</Badge>;
+            default:
+                return <Badge bg="warning">Неизвестно ({status})</Badge>;
+        }
+    };
 
-
-    if (loading) return <Spinner />;
+    if (loading) return <Spinner animation="border" />;
     if (error) return <Alert variant="danger">{error}</Alert>;
 
     return (
         <div className="table-responsive">
-
             <Table bordered hover className="align-middle text-center">
                 <thead>
                     <tr>
+                        <th>Название</th>
                         <th>Предмет</th>
-                        <th>Даты проведения</th>
+                        <th>Класс</th>
                         <th>Статус</th>
-                        <th></th>
+                        <th>Действия</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     {olympiads.map((olymp) => {
-
-                        const fullDates = olymp.dates.join(", ");
+                        const isUpdating = updatingId === olymp.id;
 
                         return (
                             <tr key={olymp.id}>
                                 <td>{olymp.name}</td>
-                                <td>{fullDates}</td>
+                                <td>{olymp.subject}</td>
+                                <td>{olymp.class}</td>
+                                <td>{renderStatusBadge(olymp.status)}</td>
+                                <td>
+                                    <div className="d-flex justify-content-center gap-2">
+                                        <Button
+                                            variant="success"
+                                            size="sm"
+                                            disabled={olymp.status === STATUS_OPEN || isUpdating}
+                                            onClick={() => handleUpdateStatus(olymp.id, STATUS_OPEN)}
+                                        >
+                                            Открыть
+                                        </Button>
 
-                                <td>
-                                    <td>{GetEventStatusLabel(olymp.status)}</td>
-                                    <select
-                                        className="form-select"
-                                        value={statuses[olymp.id!]}
-                                        onChange={(e) =>
-                                            setStatuses({
-                                                ...statuses,
-                                                [olymp.id!]: Number(e.target.value),
-                                            })
-                                        }
-                                    >
-                                        <option value={EventStatus.Register}>{GetEventStatusLabel(EventStatus.Register)}</option>
-                                        <option value={EventStatus.Approval}>{GetEventStatusLabel(EventStatus.Approval)}</option>
-                                        <option value={EventStatus.Finished}>{GetEventStatusLabel(EventStatus.Finished)}</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <Button
-                                        variant="outline-primary"
-                                        className="w-100 mb-2"
-                                        onClick={() =>
-                                            handleUpdateStatusSubmit(olymp!)
-                                        }
-                                    >
-                                        Сохранить статус
-                                    </Button>
-                                    <Button
-                                        variant="primary"
-                                        className="w-100"
-                                        disabled={
-                                            olymp.status === EventStatus.Approval // есть профили, но не выбран
-                                        }
-                                        onClick={() => handleCreateParticipantCode(olymp.id!)}
-                                    >
-                                        Создать
-                                    </Button>
+                                        <Button
+                                            variant="danger"
+                                            size="sm"
+                                            disabled={olymp.status === STATUS_CLOSED || isUpdating}
+                                            onClick={() => handleUpdateStatus(olymp.id, STATUS_CLOSED)}
+                                        >
+                                            Закрыть
+                                        </Button>
+                                    </div>
                                 </td>
                             </tr>
                         );

@@ -21,6 +21,7 @@ type EventRepository interface {
 	Create(ctx context.Context, o orm.ORM, ev *event_model.Event) (uuid.UUID, error)
 	GetByID(ctx context.Context, o orm.ORM, id uuid.UUID) (event_model.Event, error)
 	GetAllOpen(ctx context.Context, o orm.ORM, offset, limit *int) ([]event_model.Event, error)
+	GetAll(ctx context.Context, o orm.ORM, offset, limit *int) ([]event_model.Event, error)
 	UpdateStatus(ctx context.Context, o orm.ORM, id uuid.UUID, status int) error
 }
 
@@ -71,6 +72,29 @@ func (s *EventService) CreateEvent(ctx context.Context, dto event_dto.CreateEven
 		return uuid.Nil, errs.ErrInternalError.Wrap("failed to create event")
 	}
 	return id, nil
+}
+
+func (s *EventService) GetAll(ctx context.Context) ([]event_dto.EventResponseDTO, error) {
+	const op = "services.EventService.GetAll"
+	log := s.log.With(slog.String("op", op))
+
+	events, err := s.repo.GetAll(ctx, s.db, nil, nil)
+	if err != nil {
+		log.Error("failed to get open events", liblogger.Err(err))
+		return nil, errs.ErrInternalError.Wrap("failed to get events")
+	}
+
+	res := make([]event_dto.EventResponseDTO, 0, len(events))
+	for _, ev := range events {
+		res = append(res, event_dto.EventResponseDTO{
+			ID:      ev.ID.String(),
+			Name:    ev.Name,
+			Subject: ev.Subject,
+			Class:   ev.Class,
+			Status:  ev.Status,
+		})
+	}
+	return res, nil
 }
 
 func (s *EventService) GetAllOpen(ctx context.Context, page, limit *int) ([]event_dto.EventResponseDTO, error) {

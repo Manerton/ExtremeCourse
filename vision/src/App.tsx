@@ -121,7 +121,6 @@ function App() {
                             }
                         >
                             <Route path="/link-access" element={<LinkAccess />}></Route>
-                            <Route path="/list-olympiads" element={<OlympiadsAdminTable />}></Route>
                             <Route path="/applied-list" element={<ApplicationsPageBySubject />}></Route>
                             <Route path="/approval-applied-list" element={<ApprovalApplicationsPageBySubject />}></Route>
 
@@ -129,6 +128,8 @@ function App() {
                             <Route path="/AdminPanel" element={<AdminPanel />} />
                             <Route path="/AdminPanel/UserList" element={<UsersListPage />} />
                             <Route path="/AdminPanel/AllApplications" element={<ApplicationsPage />} />
+                            <Route path="/AdminPanel/AllEvents" element={<OlympiadsAdminTable />} />
+
 
                             <Route path="/olymp-admin/user/index" element={<UserIndex />} />
                             <Route path="/olymp-admin/user/show/:id" element={<UserShow />} />

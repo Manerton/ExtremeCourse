@@ -261,6 +261,10 @@ func (a *App) initRoutes(router *chi.Mux,
 			r.Get("/api/applications/export-excel", applicationHandler.ExportApplicationsToExcel)
 
 			r.Patch("/api/applications/score/update", applicationHandler.UpdateAllScores)
+
+			r.Get("/api/events/all", eventHandler.GetAll)
+			r.Post("/api/events/all", eventHandler.CreateEvent)
+			r.Patch("/api/events/{id}/status", eventHandler.UpdateStatus)
 		})
 
 		r.Route("/api/applications/{application_id}/portfolio", func(r chi.Router) {
@@ -273,10 +277,7 @@ func (a *App) initRoutes(router *chi.Mux,
 
 		r.Route("/api/events", func(events chi.Router) {
 			events.Get("/", eventHandler.GetAllOpen)
-			events.Post("/", eventHandler.CreateEvent)
-			events.Patch("/{id}/status", eventHandler.UpdateStatus)
 			events.Post("/{id}/apply", eventHandler.ApplyToEvent)
-
 		})
 	})
 }

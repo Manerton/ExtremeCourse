@@ -105,6 +105,12 @@ const AdminSidebar: React.FC = () => {
                       <FileText size={18} />,
                       "Рассмотрение заявок"
                   )}
+
+                  {renderLink(
+                      "/AdminPanel/AllEvents",
+                      <FileText size={18} />,
+                      "Список событий"
+                  )}
                 </>
             )}
           </Nav>

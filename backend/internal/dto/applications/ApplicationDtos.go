@@ -46,12 +46,14 @@ type ApplicationResponseDTO struct {
 }
 
 type UserDetailsDTO struct {
-	ID          string    `json:"id"`
-	Email       string    `json:"email"`
-	FullName    string    `json:"full_name"`
-	PhoneNumber string    `json:"phone_number"`
-	Class       string    `json:"class"`
-	BirthDate   time.Time `json:"birth_date"`
+	ID           string    `json:"id"`
+	Email        string    `json:"email"`
+	FullName     string    `json:"full_name"`
+	PhoneNumber  string    `json:"phone_number"`
+	Class        string    `json:"class"`
+	BirthDate    time.Time `json:"birth_date"`
+	ParentFIO    string    `json:"parent_fio"`
+	ParentNumber string    `json:"parent_number"`
 }
 
 type SchoolDetailsDTO struct {
