@@ -35,6 +35,7 @@ import {
     BsDownload,
     BsBoxArrowUpRight,
     BsInfoCircle,
+    BsCheck2Square,
 } from "react-icons/bs";
 import { useAuth } from "../../Helpers/AuthContext";
 import { FullApplicationDetailsDTO } from "../../types/application";
@@ -129,7 +130,7 @@ const ApplicationsPage: React.FC = () => {
     const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
     const [portfolioFilter, setPortfolioFilter] = useState<string>("ALL");
 
-    // Сортировка по баллам
+    // Сортировка по баллам портфолио
     type SortDir = "asc" | "desc" | null;
     const [sortByScore, setSortByScore] = useState<SortDir>(null);
 
@@ -157,19 +158,19 @@ const ApplicationsPage: React.FC = () => {
         loadData(page, limit);
     }, [page, limit, accessToken]);
 
-
     const handleUpdateScore = async () => {
         if (!accessToken) return;
         try {
-            const res = await axiosUpdateScores(accessToken)
+            await axiosUpdateScores(accessToken);
+            loadData(page, limit);
         } catch (err: any) {
             setError(
                 err.response?.data?.message ||
                 err.message ||
                 "Не удалось обновить баллы"
             );
-        } 
-    }
+        }
+    };
 
     const handleExportExcel = async () => {
         if (!accessToken) return;
@@ -391,7 +392,7 @@ const ApplicationsPage: React.FC = () => {
                         <span>{exporting ? "Экспорт..." : "Экспорт в Excel"}</span>
                     </Button>
 
-                     <Button
+                    <Button
                         variant="outline-warning"
                         size="sm"
                         className="d-inline-flex align-items-center gap-1"
@@ -498,14 +499,14 @@ const ApplicationsPage: React.FC = () => {
                                     }}
                                     title={
                                         sortByScore === null
-                                            ? "Сортировать по убыванию баллов"
+                                            ? "Сортировать по убыванию баллов портфолио"
                                             : sortByScore === "desc"
-                                                ? "Сортировать по возрастанию баллов"
+                                                ? "Сортировать по возрастанию баллов портфолио"
                                                 : "Сбросить сортировку"
                                     }
                                 >
                                     <span className="d-inline-flex align-items-center gap-1 justify-content-center">
-                                        Портфолио (Баллы)
+                                        Портфолио / Тест
                                         {sortByScore === "desc" && <BsSortDown />}
                                         {sortByScore === "asc" && <BsSortUp />}
                                         {sortByScore === null && (
@@ -564,64 +565,66 @@ const ApplicationsPage: React.FC = () => {
                                                 </Badge>
                                             </td>
 
-                                            {/* Портфолио: кликабельная карточка с отдельным видом для "Без достижений" */}
+                                            {/* Портфолио и Баллы тестирования */}
                                             <td className="text-center">
-                                                {hasPortfolio ? (
-                                                    <div
-                                                        className="portfolio-clickable d-inline-block text-decoration-none"
-                                                        onClick={() => setSelectedApp(app)}
-                                                        role="button"
-                                                        tabIndex={0}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "Enter" || e.key === " ") {
-                                                                e.preventDefault();
-                                                                setSelectedApp(app);
+                                                <div className="d-flex flex-column align-items-center gap-1">
+                                                    {hasPortfolio ? (
+                                                        <div
+                                                            className="portfolio-clickable d-inline-block text-decoration-none"
+                                                            onClick={() => setSelectedApp(app)}
+                                                            role="button"
+                                                            tabIndex={0}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter" || e.key === " ") {
+                                                                    e.preventDefault();
+                                                                    setSelectedApp(app);
+                                                                }
+                                                            }}
+                                                            title={
+                                                                isNoAchievements
+                                                                    ? "Участник указал отсутствие достижений. Нажмите для инспекции заявки"
+                                                                    : "Нажмите, чтобы просмотреть ведомость достижений"
                                                             }
-                                                        }}
-                                                        title={
-                                                            isNoAchievements
-                                                                ? "Участник указал отсутствие достижений. Нажмите для просмотра заявки"
-                                                                : "Нажмите, чтобы просмотреть ведомость достижений"
-                                                        }
-                                                    >
-                                                        {isNoAchievements ? (
-                                                            <>
+                                                        >
+                                                            {isNoAchievements ? (
                                                                 <Badge
                                                                     bg="light"
                                                                     text="dark"
                                                                     className="border border-secondary-subtle px-2 py-1"
                                                                 >
-                                                                    Без достижений (0 б.)
+                                                                    Портфолио: 0 б.
                                                                 </Badge>
-                                                                <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                                                    Указано участником
-                                                                </div>
-                                                                <div className="small text-primary mt-1">
-                                                                    <BsEye size={11} /> Открыть
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <>
+                                                            ) : (
                                                                 <Badge
                                                                     bg="success-subtle"
                                                                     className="text-success border border-success-subtle px-2 py-1 fs-6"
                                                                 >
-                                                                    {app.portfolio?.score || 0} б.
+                                                                    Портфолио: {app.portfolio?.score || 0} б.
                                                                 </Badge>
-                                                                <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                                                    {realAchievementsCount} достижений
-                                                                </div>
-                                                                <div className="small text-primary mt-1">
-                                                                    <BsEye size={11} /> Открыть
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <Badge bg="secondary-subtle" className="text-muted border">
-                                                        Не прикреплено
-                                                    </Badge>
-                                                )}
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <Badge bg="secondary-subtle" className="text-muted border">
+                                                            Портфолио не прикреплено
+                                                        </Badge>
+                                                    )}
+
+                                                    {/* Баллы входного тестирования */}
+                                                    {app.testing_score !== undefined && app.testing_score !== null ? (
+                                                        <Badge
+                                                            bg="primary-subtle"
+                                                            className="text-primary border border-primary-subtle px-2 py-1"
+                                                            title="Результат входного тестирования"
+                                                        >
+                                                            <BsCheck2Square className="me-1" />
+                                                            Тест: {app.testing_score} б.
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                                            Тест не пройден
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
 
                                             {/* Класс обучения ученика и класс участия в олимпиаде */}
@@ -862,9 +865,9 @@ const ApplicationsPage: React.FC = () => {
                                     </Card.Header>
 
                                     <Card.Body className="p-3 d-flex flex-column gap-3">
-                                        {/* Сводный баннер итогового балла */}
+                                        {/* Сводный баннер итогового балла с тестированием */}
                                         <div
-                                            className={`d-flex justify-content-between align-items-center p-3 rounded-3 border ${
+                                            className={`d-flex flex-wrap justify-content-between align-items-center p-3 rounded-3 border gap-3 ${
                                                 selectedAppHasNoAchievements
                                                     ? "bg-secondary-subtle border-secondary-subtle"
                                                     : "bg-primary-subtle border-primary-subtle"
@@ -878,27 +881,58 @@ const ApplicationsPage: React.FC = () => {
                                                             : "text-primary-emphasis"
                                                     }`}
                                                 >
-                                                    Предварительный балл
+                                                    Баллы кандидата
                                                 </div>
-                                                <div
-                                                    className={`display-6 fw-bold mb-0 lh-1 mt-1 ${
-                                                        selectedAppHasNoAchievements ? "text-secondary" : "text-primary"
-                                                    }`}
-                                                >
-                                                    {selectedAppHasNoAchievements
-                                                        ? 0
-                                                        : selectedApp.portfolio?.score ?? calculatedTotalScore}{" "}
-                                                    <span className="fs-5 fw-normal">баллов</span>
+                                                <div className="d-flex align-items-baseline gap-3 mt-1">
+                                                    <div>
+                                                        <span className="text-muted small d-block">Портфолио</span>
+                                                        <span
+                                                            className={`h4 fw-bold mb-0 ${
+                                                                selectedAppHasNoAchievements ? "text-secondary" : "text-success"
+                                                            }`}
+                                                        >
+                                                            {selectedAppHasNoAchievements
+                                                                ? 0
+                                                                : selectedApp.portfolio?.score ?? calculatedTotalScore}{" "}
+                                                            <small className="fs-6 fw-normal">б.</small>
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="border-start ps-3">
+                                                        <span className="text-muted small d-block">Тестирование</span>
+                                                        <span className="h4 fw-bold text-primary mb-0">
+                                                            {selectedApp.testing_score !== undefined && selectedApp.testing_score !== null
+                                                                ? `${selectedApp.testing_score} б.`
+                                                                : "—"}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="border-start ps-3">
+                                                        <span className="text-muted small d-block">Суммарно</span>
+                                                        <span className="h4 fw-bold text-dark mb-0">
+                                                            {(selectedAppHasNoAchievements ? 0 : (selectedApp.portfolio?.score ?? calculatedTotalScore)) +
+                                                                (selectedApp.testing_score || 0)}{" "}
+                                                            <small className="fs-6 fw-normal">б.</small>
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <Badge
-                                                bg={selectedAppHasNoAchievements ? "secondary" : "primary"}
-                                                className="fs-6 px-3 py-2 rounded-pill fw-normal"
-                                            >
-                                                {selectedAppHasNoAchievements
-                                                    ? "Нет достижений"
-                                                    : `${selectedParsedAchievements.length} заявленных пунктов`}
-                                            </Badge>
+
+                                            <div className="d-flex flex-column align-items-end gap-1">
+                                                <Badge
+                                                    bg={selectedAppHasNoAchievements ? "secondary" : "primary"}
+                                                    className="fs-6 px-3 py-2 rounded-pill fw-normal"
+                                                >
+                                                    {selectedAppHasNoAchievements
+                                                        ? "Нет достижений"
+                                                        : `${selectedParsedAchievements.length} заявленных пунктов`}
+                                                </Badge>
+                                                {selectedApp.testing_score !== undefined && selectedApp.testing_score !== null && (
+                                                    <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+                                                        Входное тестирование пройдено
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Комментарий участника */}
@@ -918,7 +952,7 @@ const ApplicationsPage: React.FC = () => {
                                                 </h6>
                                                 <p className="text-muted small mb-0">
                                                     При подаче заявки был выбран пункт «У меня нет индивидуальных достижений (портфолио)».
-                                                    Презентация не требуется, предварительный рейтинг составляет 0 баллов.
+                                                    Презентация не требуется, предварительный рейтинг портфолио составляет 0 баллов.
                                                 </p>
                                             </div>
                                         ) : selectedParsedAchievements.length > 0 ? (

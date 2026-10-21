@@ -59,4 +59,6 @@ export interface FullApplicationDetailsDTO {
     school: SchoolDetailsDTO;
     event: EventDetailsDTO;
     portfolio?: PortfolioResponseDTO | null;
+    testing_score?: number | null;
+
 }
