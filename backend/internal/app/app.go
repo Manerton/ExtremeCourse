@@ -115,7 +115,7 @@ func New(log *slog.Logger, cfg *config.Config) *App {
 	districtService := district_service.New(log, gormORM, districtRepository)
 	linkService := links_service.New(log, gormORM, cfg.Prefix, jwtManager, schoolRepository, districtRepository)
 	eventService := event_service.New(log, gormORM, eventReposotory, applicationRepository, participantRepository)
-	applicationService := application_service.NewApplicationService(log, gormORM, applicationRepository, participantRepository, schoolRepository, eventReposotory, portfolioRepository)
+	applicationService := application_service.NewApplicationService(log, gormORM, applicationRepository, participantRepository, schoolRepository, eventReposotory, portfolioRepository, homeworkRepository)
 	portfolioService := portfolio_service.New(log, gormORM, portfolioRepository, diskStore)
 	homeworkService := homework_service.New(log, gormORM, homeworkRepository, userRepository)
 

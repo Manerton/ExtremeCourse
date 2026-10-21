@@ -15,6 +15,7 @@ import (
 	"main/internal/models/participant"
 	"main/internal/models/portfolio"
 	"main/internal/models/school"
+	"main/internal/repositories/homework_repository"
 	"main/internal/storage/orm"
 	"strconv"
 	"strings"
@@ -61,6 +62,10 @@ type PortfolioRepository interface {
 	UpdateScore(ctx context.Context, orm orm.ORM, id uuid.UUID, score int) error
 }
 
+type HomeworkRepository interface {
+	GetUsersEventScores(ctx context.Context, o orm.ORM, eventIDs []uuid.UUID, userIDs []uuid.UUID) (map[homework_repository.EventUserKey]int, error)
+}
+
 type ApplicationService struct {
 	db              orm.ORM
 	log             *slog.Logger
@@ -69,13 +74,15 @@ type ApplicationService struct {
 	schoolRepo      SchoolRepository
 	eventRepo       EventRepository
 	portfolioRepo   PortfolioRepository
+	homeworkRepo    HomeworkRepository // <-- Новое поле
 }
 
 func NewApplicationService(log *slog.Logger, db orm.ORM, repo ApplicationRepository,
 	participantRepo ParticipantsRepository,
 	schoolRepo SchoolRepository,
 	eventRepo EventRepository,
-	portfolioRepo PortfolioRepository) *ApplicationService {
+	portfolioRepo PortfolioRepository,
+	homeworkRepo HomeworkRepository) *ApplicationService { // <-- Новый аргумент
 	return &ApplicationService{
 		db:              db,
 		log:             log,
@@ -84,6 +91,7 @@ func NewApplicationService(log *slog.Logger, db orm.ORM, repo ApplicationReposit
 		schoolRepo:      schoolRepo,
 		eventRepo:       eventRepo,
 		portfolioRepo:   portfolioRepo,
+		homeworkRepo:    homeworkRepo, // <-- Инициализация
 	}
 }
 
@@ -553,6 +561,14 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 		eventMap[ev.ID] = ev
 	}
 
+	// --- ДОБАВЛЕНО: Получаем баллы за событие (тестирование/ДЗ) ---
+	scoresMap, err := s.homeworkRepo.GetUsersEventScores(ctx, s.db, eventIDs, userIDs)
+	if err != nil {
+		log.Error("failed get users event scores", liblogger.Err(err))
+		return nil, errs.ErrInternalError
+	}
+	// --------------------------------------------------------------
+
 	res := make([]ApplicationDto.FullApplicationDetailsDTO, 0, len(apps))
 	for _, app := range apps {
 		part := participantMap[app.UserID]
@@ -570,6 +586,18 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 		if part.ClassNumber > 0 {
 			classStr = strconv.Itoa(part.ClassNumber)
 		}
+
+		// --- ДОБАВЛЕНО: Проверяем, сдавал ли пользователь работы по этому событию ---
+		var testingScore *int
+		scoreKey := homework_repository.EventUserKey{
+			EventID: app.EventID,
+			UserID:  app.UserID,
+		}
+		if val, exists := scoresMap[scoreKey]; exists {
+			scoreCopy := val
+			testingScore = &scoreCopy
+		}
+		// ----------------------------------------------------------------------------
 
 		res = append(res, ApplicationDto.FullApplicationDetailsDTO{
 			ID:                 app.ID.String(),
@@ -609,6 +637,7 @@ func (s *ApplicationService) GetAllFullApplications(ctx context.Context, page, l
 				CodeAchievement: pf.CodeAchievement,
 				FilePath:        pf.FilePath,
 			},
+			TestingScore: testingScore, // <-- ДОБАВЛЕНО: Передаем указатель на баллы
 		})
 	}
 

@@ -82,4 +82,5 @@ type FullApplicationDetailsDTO struct {
 	School             SchoolDetailsDTO                   `json:"school"`
 	Event              EventDetailsDTO                    `json:"event"`
 	Portfolio          portfolio_dto.PortfolioResponseDTO `json:"portfolio"`
+	TestingScore       *int                               `json:"testing_score"`
 }

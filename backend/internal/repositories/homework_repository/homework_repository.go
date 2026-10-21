@@ -21,6 +21,63 @@ func New() *HomeworkRepository {
 	return &HomeworkRepository{}
 }
 
+// EventUserKey — составной ключ для привязки баллов конкретного пользователя к конкретному событию
+type EventUserKey struct {
+	EventID uuid.UUID
+	UserID  uuid.UUID
+}
+
+// GetUsersEventScores возвращает карту суммарных баллов пользователей за все ДЗ/тесты в рамках указанных событий.
+// Если пользователь не сдавал ни одного ДЗ по событию, ключа в map не будет.
+func (r *HomeworkRepository) GetUsersEventScores(ctx context.Context, o orm.ORM, eventIDs []uuid.UUID, userIDs []uuid.UUID) (map[EventUserKey]int, error) {
+	const op = "repositories.HomeworkRepository.GetUsersEventScores"
+
+	if len(eventIDs) == 0 || len(userIDs) == 0 {
+		return map[EventUserKey]int{}, nil
+	}
+
+	// 1. Получаем все домашние задания по списку событий
+	var homeworks []homework_model.Homework
+	err := o.Find(ctx, homework_model.Homework{}, nil, nil, nil, nil, nil, &homeworks, "event_id IN ?", eventIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%s: find homeworks: %w", op, err)
+	}
+
+	if len(homeworks) == 0 {
+		return map[EventUserKey]int{}, nil
+	}
+
+	hwToEvent := make(map[uuid.UUID]uuid.UUID, len(homeworks))
+	hwIDs := make([]uuid.UUID, 0, len(homeworks))
+	for _, hw := range homeworks {
+		hwToEvent[hw.ID] = hw.EventId
+		hwIDs = append(hwIDs, hw.ID)
+	}
+
+	// 2. Получаем все решения (submissions) по этим ДЗ для списка пользователей
+	var submissions []submission_model.HomeworkSubmission
+	err = o.Find(ctx, submission_model.HomeworkSubmission{}, nil, nil, nil, nil, nil, &submissions, "homework_id IN ? AND user_id IN ?", hwIDs, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%s: find submissions: %w", op, err)
+	}
+
+	// 3. Суммируем баллы для каждой пары (EventID, UserID)
+	scores := make(map[EventUserKey]int)
+	for _, sub := range submissions {
+		eventID, ok := hwToEvent[sub.HomeworkID]
+		if !ok {
+			continue
+		}
+		key := EventUserKey{
+			EventID: eventID,
+			UserID:  sub.UserID,
+		}
+		scores[key] += sub.TotalScore
+	}
+
+	return scores, nil
+}
+
 func (r *HomeworkRepository) CreateHomework(ctx context.Context, o orm.ORM, hw *homework_model.Homework) (uuid.UUID, error) {
 	const op = "repositories.HomeworkRepository.CreateHomework"
 	if err := o.Create(ctx, hw); err != nil {

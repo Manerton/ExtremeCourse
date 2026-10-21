@@ -123,6 +123,8 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 		"Район",
 		"Портфолио (Балл)",
 		"Код достижения",
+		"Результаты тестирования (Балл)",
+		"Итоговый балл (Портфолио + Тест)",
 		"Дата подачи",
 		"Портфолио (файл)",
 	}
@@ -167,6 +169,16 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 			}
 		}
 
+		// Обработка результата тестирования за конкретное мероприятие заявки
+		var testingScoreDisplay interface{} = "Не сдавалось"
+		testingScoreNumeric := 0
+		if app.TestingScore != nil {
+			testingScoreNumeric = *app.TestingScore
+			testingScoreDisplay = testingScoreNumeric
+		}
+
+		totalCombinedScore := actualScore + testingScoreNumeric
+
 		// Формируем текст для отображения в последней колонке
 		downloadURL := s.generateURLDownload(app.Portfolio.FilePath)
 
@@ -192,6 +204,8 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 			app.School.DistrictName,
 			actualScore,
 			achievementReadable,
+			testingScoreDisplay,
+			totalCombinedScore,
 			submittedAtStr,
 			displayFileText,
 		}
@@ -211,7 +225,7 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 		lastCell, _ := excelize.CoordinatesToCellName(len(rowData), row)
 		_ = f.SetCellStyle(sheetName, firstCell, lastCell, dataStyle)
 
-		// Для колонки с файлом (колонка 16 = 'P') устанавливаем кликабельную гиперссылку
+		// Для последней колонки с файлом устанавливаем кликабельную гиперссылку
 		if downloadURL != "" {
 			linkCell, _ := excelize.CoordinatesToCellName(len(rowData), row)
 			if err := f.SetCellHyperLink(sheetName, linkCell, downloadURL, "External"); err == nil {
@@ -223,24 +237,26 @@ func (s *ExcelService) ExportApplicationsToExcel(ctx context.Context, apps []App
 	}
 
 	colWidths := map[string]float64{
-		"A": 38, // ID
-		"B": 16, // Статус
+		"A": 38, // ID заявки
+		"B": 18, // Статус
 		"C": 14, // Класс участия
-		"D": 32, // ФИО
+		"D": 32, // ФИО участника
 		"E": 26, // Email
-		"F": 18, // Телефон
+		"F": 18, // Телефон участника
 		"G": 12, // Класс уч-ка
-		"H": 14, // Дата рождения
-		"I": 28, // Мероприятие
-		"J": 20, // Предмет
-		"K": 35, // Школа
-		"L": 22, // Район
-		"M": 45, // Балл
-		"N": 20, // Код достижения
-		"O": 20, // Дата подачи
-		"P": 45, // Портфолио (файл)
-		"Q": 18,
-		"R": 20,
+		"H": 30, // ФИО родителя
+		"I": 18, // Телефон родителя
+		"J": 15, // Дата рождения
+		"K": 28, // Мероприятие
+		"L": 20, // Предмет
+		"M": 35, // Школа
+		"N": 22, // Район
+		"O": 18, // Портфолио (Балл)
+		"P": 35, // Код достижения
+		"Q": 22, // Результаты тестирования (Балл)
+		"R": 22, // Итоговый балл (Портфолио + Тест)
+		"S": 20, // Дата подачи
+		"T": 22, // Портфолио (файл)
 	}
 	for col, width := range colWidths {
 		_ = f.SetColWidth(sheetName, col, col, width)
